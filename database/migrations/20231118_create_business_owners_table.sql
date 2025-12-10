@@ -1,0 +1,3 @@
+-- This migration is no longer needed as we're using separate tables now
+-- The schema is now managed by schema.sql
+-- This file is kept for backward compatibility
