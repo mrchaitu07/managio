@@ -40,15 +40,26 @@ class Employee {
       [ownerId]
     );
     
+    // Optimize payment information retrieval to avoid connection exhaustion
+    if (rows.length === 0) {
+      return [];
+    }
+    
+    // Get all employee IDs
+    const employeeIds = rows.map(employee => employee.employee_id);
+    
+    // Get all payments for these employees in a single query using the optimized method
+    const paymentMap = await Payment.getTotalPaidAmounts(employeeIds);
+    
     // Add payment information to each employee
-    const employeesWithPayments = await Promise.all(rows.map(async (employee) => {
-      const totalPaid = await Payment.getTotalPaidAmount(employee.employee_id);
+    const employeesWithPayments = rows.map(employee => {
+      const totalPaid = paymentMap[employee.employee_id] || 0;
       return {
         ...employee,
         total_paid: totalPaid,
         remaining_amount: parseFloat(employee.salary_amount || 0) - totalPaid
       };
-    }));
+    });
     
     return employeesWithPayments;
   }

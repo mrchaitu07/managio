@@ -84,6 +84,28 @@ class Payment {
     
     return result.affectedRows > 0;
   }
+  
+  // Get total paid amounts for multiple employees
+  static async getTotalPaidAmounts(employeeIds) {
+    if (employeeIds.length === 0) {
+      return {};
+    }
+    
+    const [rows] = await db.execute(
+      `SELECT employee_id, COALESCE(SUM(amount), 0) as total_paid 
+       FROM payments 
+       WHERE employee_id IN (${employeeIds.map(() => '?').join(',')})
+       GROUP BY employee_id`,
+      employeeIds
+    );
+    
+    const paymentMap = {};
+    rows.forEach(row => {
+      paymentMap[row.employee_id] = parseFloat(row.total_paid);
+    });
+    
+    return paymentMap;
+  }
 }
 
 module.exports = Payment;
