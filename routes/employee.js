@@ -187,7 +187,12 @@ router.put('/:id', auth, (req, res, next) => {
 // Separate function to handle the actual update logic
 const handleEmployeeUpdate = async (req, res) => {
   try {
-    const owner_id = req.user.id;
+    // Get the owner ID based on the user role
+    // If user is an employee, use their owner_id
+    // If user is an owner, use their own ID
+    const requestingUserId = req.user.id;
+    const requestingUserRole = req.user.role;
+    const owner_id = req.user.role === 'employee' ? req.user.owner_id : req.user.id;
     const { id } = req.params;
     
     // Handle both regular JSON and multipart form data
@@ -208,7 +213,7 @@ const handleEmployeeUpdate = async (req, res) => {
       });
     }
     
-    console.log('Update Employee Request - ID:', id, 'Owner ID:', owner_id, 'User from token:', req.user);
+    console.log('Update Employee Request - Employee ID:', id, 'Owner ID:', owner_id, 'Requesting User ID:', requestingUserId, 'Requesting User Role:', requestingUserRole, 'User from token:', req.user);
     
     // Extract fields from request body
     const {
