@@ -348,28 +348,50 @@ const handleEmployeeUpdate = async (req, res) => {
       }
     }
 
-    // Convert joining date format (DD MMM YYYY to YYYY-MM-DD) if provided
+    // Convert joining date format if provided
     let formattedJoiningDate = null;
     if (joiningDate) {
-      const joiningDateParts = String(joiningDate).split(' ');
-      const monthMap = {
-        'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
-        'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
-        'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
-      };
-      formattedJoiningDate = `${joiningDateParts[2]}-${monthMap[joiningDateParts[1]]}-${joiningDateParts[0]}`;
+      const dateString = String(joiningDate);
+      
+      // Handle DD MMM YYYY format (e.g., "15 Jan 2024")
+      if (dateString.includes(' ')) {
+        const joiningDateParts = dateString.split(' ');
+        if (joiningDateParts.length === 3) {
+          const monthMap = {
+            'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
+            'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
+            'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+          };
+          formattedJoiningDate = `${joiningDateParts[2]}-${monthMap[joiningDateParts[1]]}-${joiningDateParts[0]}`;
+        }
+      }
+      // Handle YYYY-MM-DD format (e.g., "2025-11-20")
+      else if (/\d{4}-\d{2}-\d{2}/.test(dateString)) {
+        formattedJoiningDate = dateString.split('T')[0]; // Extract date part if ISO format
+      }
     }
     
     // Convert contract end date format if provided
     let formattedContractEndDate = null;
     if (contractEndDate) {
-      const contractDateParts = String(contractEndDate).split(' ');
-      const monthMap = {
-        'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
-        'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
-        'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
-      };
-      formattedContractEndDate = `${contractDateParts[2]}-${monthMap[contractDateParts[1]]}-${contractDateParts[0]}`;
+      const dateString = String(contractEndDate);
+      
+      // Handle DD MMM YYYY format (e.g., "15 Jan 2024")
+      if (dateString.includes(' ')) {
+        const contractDateParts = dateString.split(' ');
+        if (contractDateParts.length === 3) {
+          const monthMap = {
+            'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
+            'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
+            'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+          };
+          formattedContractEndDate = `${contractDateParts[2]}-${monthMap[contractDateParts[1]]}-${contractDateParts[0]}`;
+        }
+      }
+      // Handle YYYY-MM-DD format (e.g., "2025-11-20")
+      else if (/\d{4}-\d{2}-\d{2}/.test(dateString)) {
+        formattedContractEndDate = dateString.split('T')[0]; // Extract date part if ISO format
+      }
     }
 
     // Convert salary amount to number if it's provided
