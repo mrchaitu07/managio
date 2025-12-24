@@ -208,10 +208,11 @@ router.put('/:id', upload.single('photoUrl'), auth, async (req, res) => {
     }
     
     // Check if mobile number is being changed and if the new number already exists
-    if (currentEmployee.mobile_number !== mobileNumber) {
+    // Convert mobileNumber to string for comparison if it's a string from multipart
+    if (currentEmployee.mobile_number !== String(mobileNumber)) {
       const [existingEmployees] = await db.execute(
         'SELECT id, full_name, mobile_number FROM employees WHERE mobile_number = ? AND is_active = TRUE AND id != ?',
-        [mobileNumber, id]
+        [String(mobileNumber), id]
       );
       
       if (existingEmployees.length > 0) {
@@ -225,7 +226,7 @@ router.put('/:id', upload.single('photoUrl'), auth, async (req, res) => {
     // Convert joining date format (DD MMM YYYY to YYYY-MM-DD) if provided
     let formattedJoiningDate = null;
     if (joiningDate) {
-      const joiningDateParts = joiningDate.split(' ');
+      const joiningDateParts = String(joiningDate).split(' ');
       const monthMap = {
         'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
         'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
@@ -237,13 +238,25 @@ router.put('/:id', upload.single('photoUrl'), auth, async (req, res) => {
     // Convert contract end date format if provided
     let formattedContractEndDate = null;
     if (contractEndDate) {
-      const contractDateParts = contractEndDate.split(' ');
+      const contractDateParts = String(contractEndDate).split(' ');
       const monthMap = {
         'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
         'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
         'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
       };
       formattedContractEndDate = `${contractDateParts[2]}-${monthMap[contractDateParts[1]]}-${contractDateParts[0]}`;
+    }
+
+    // Convert salary amount to number if it's provided
+    let processedSalaryAmount = salaryAmount;
+    if (salaryAmount !== undefined && salaryAmount !== null) {
+      processedSalaryAmount = parseFloat(salaryAmount);
+      if (isNaN(processedSalaryAmount)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid salary amount provided'
+        });
+      }
     }
 
     // Handle photo URL - use uploaded file path if available, otherwise use provided URL
@@ -253,17 +266,17 @@ router.put('/:id', upload.single('photoUrl'), auth, async (req, res) => {
     }
 
     const employeeData = {
-      full_name: fullName,
-      mobile_number: mobileNumber,
-      role,
+      full_name: String(fullName || ''),
+      mobile_number: String(mobileNumber),
+      role: String(role || ''),
       photo_url: photoUrl,
-      employee_type: employeeType,
+      employee_type: String(employeeType || 'Full-Time'),
       joining_date: formattedJoiningDate,
       contract_end_date: formattedContractEndDate,
-      salary_type: salaryType,
-      salary_amount: salaryAmount,
-      emergency_contact_name: emergencyContactName,
-      emergency_contact_number: emergencyContactNumber
+      salary_type: String(salaryType || 'Monthly'),
+      salary_amount: processedSalaryAmount,
+      emergency_contact_name: String(emergencyContactName || ''),
+      emergency_contact_number: String(emergencyContactNumber || '')
     };
 
     const updated = await Employee.update(id, owner_id, employeeData);
