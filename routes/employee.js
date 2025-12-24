@@ -247,7 +247,7 @@ const handleEmployeeUpdate = async (req, res) => {
 
     // Ensure proper type conversion for database query
     const employeeId = parseInt(id, 10);
-    const ownerId = req.user.id; // This comes from auth middleware
+    const ownerId = owner_id; // Use the owner_id determined based on user role
     
     if (isNaN(employeeId)) {
       return res.status(400).json({
