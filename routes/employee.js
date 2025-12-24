@@ -3,6 +3,20 @@ const router = express.Router();
 const Employee = require('../models/Employee');
 const auth = require('../middleware/auth');
 const db = require('../config/db');
+const multer = require('multer');
+const path = require('path');
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/'); // Make sure this directory exists
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname)); // Appending extension
+  }
+});
+
+const upload = multer({ storage: storage });
 
 // Add new employee
 router.post('/add', auth, async (req, res) => {
@@ -147,16 +161,34 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 // Update employee
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', upload.single('photoUrl'), auth, async (req, res) => {
   try {
     const owner_id = req.user.id;
     const { id } = req.params;
-
+    
+    // Handle both regular JSON and multipart form data
+    let bodyData = req.body;
+    
+    // If it's a multipart request with a file, req.body fields will be strings
+    // We need to parse them if they're JSON strings
+    if (req.body && typeof req.body === 'object') {
+      // Check if any fields are JSON strings and parse them
+      Object.keys(req.body).forEach(key => {
+        if (typeof req.body[key] === 'string' && req.body[key].startsWith('{') && req.body[key].endsWith('}')) {
+          try {
+            req.body[key] = JSON.parse(req.body[key]);
+          } catch (e) {
+            // If it's not a JSON string, keep the original value
+          }
+        }
+      });
+    }
+    
+    // Extract fields from request body
     const {
       fullName,
       mobileNumber,
       role,
-      photoUrl,
       employeeType,
       joiningDate,
       contractEndDate,
@@ -212,6 +244,12 @@ router.put('/:id', auth, async (req, res) => {
         'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
       };
       formattedContractEndDate = `${contractDateParts[2]}-${monthMap[contractDateParts[1]]}-${contractDateParts[0]}`;
+    }
+
+    // Handle photo URL - use uploaded file path if available, otherwise use provided URL
+    let photoUrl = req.body.photoUrl;
+    if (req.file) {
+      photoUrl = `/uploads/${req.file.filename}`; // Store the path to the uploaded file
     }
 
     const employeeData = {

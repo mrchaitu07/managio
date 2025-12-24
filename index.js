@@ -8,6 +8,7 @@ const app = express();
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use('/uploads', express.static('uploads'));
 
 // Test DB Connection
 db.getConnection()
