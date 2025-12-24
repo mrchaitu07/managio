@@ -417,11 +417,14 @@ const handleEmployeeUpdate = async (req, res) => {
     }
 
     // Only update fields that are provided, keeping existing values for others
+    // Special handling for photo_url: if a file was uploaded, always use the new path
+    const shouldUpdatePhotoUrl = req.file || (photoUrl !== undefined && photoUrl !== null && photoUrl !== '');
+    
     const employeeData = {
       full_name: fullName !== undefined && fullName !== null && fullName !== '' ? String(fullName) : currentEmployee.full_name,
       mobile_number: mobileNumber !== undefined && mobileNumber !== null && mobileNumber !== '' ? String(mobileNumber) : currentEmployee.mobile_number,
       role: role !== undefined && role !== null && role !== '' ? String(role) : currentEmployee.role,
-      photo_url: photoUrl !== undefined && photoUrl !== null ? photoUrl : currentEmployee.photo_url,
+      photo_url: shouldUpdatePhotoUrl ? photoUrl : currentEmployee.photo_url,
       employee_type: employeeType !== undefined && employeeType !== null && employeeType !== '' ? String(employeeType) : currentEmployee.employee_type,
       joining_date: formattedJoiningDate !== null ? formattedJoiningDate : currentEmployee.joining_date,
       contract_end_date: formattedContractEndDate !== null ? formattedContractEndDate : currentEmployee.contract_end_date,
