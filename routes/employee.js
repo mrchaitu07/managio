@@ -161,7 +161,31 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 // Update employee
-router.put('/:id', upload.single('photoUrl'), auth, async (req, res) => {
+// Handle both regular JSON and multipart form data
+router.put('/:id', auth, (req, res, next) => {
+  // Check if the request is multipart
+  if (req.headers['content-type'] && req.headers['content-type'].startsWith('multipart/form-data')) {
+    // Use multer middleware for multipart requests
+    upload.single('photoUrl')(req, res, (err) => {
+      if (err) {
+        console.error('Multer error:', err);
+        return res.status(500).json({
+          success: false,
+          message: 'File upload error',
+          error: err.message
+        });
+      }
+      // Continue with the request handler
+      handleEmployeeUpdate(req, res);
+    });
+  } else {
+    // Handle as regular JSON request
+    handleEmployeeUpdate(req, res);
+  }
+});
+
+// Separate function to handle the actual update logic
+const handleEmployeeUpdate = async (req, res) => {
   try {
     const owner_id = req.user.id;
     const { id } = req.params;
@@ -184,6 +208,8 @@ router.put('/:id', upload.single('photoUrl'), auth, async (req, res) => {
       });
     }
     
+    console.log('Update Employee Request - ID:', id, 'Owner ID:', owner_id, 'User from token:', req.user);
+    
     // Extract fields from request body
     const {
       fullName,
@@ -198,12 +224,9 @@ router.put('/:id', upload.single('photoUrl'), auth, async (req, res) => {
       emergencyContactNumber
     } = req.body;
 
-    // First, get the current employee to check if mobile number is being changed
     // Ensure proper type conversion for database query
     const employeeId = parseInt(id, 10);
     const ownerId = req.user.id; // This comes from auth middleware
-    
-    console.log('Update Employee Request - ID:', employeeId, 'Owner ID:', ownerId, 'User from token:', req.user);
     
     if (isNaN(employeeId)) {
       return res.status(400).json({
@@ -329,7 +352,7 @@ router.put('/:id', upload.single('photoUrl'), auth, async (req, res) => {
       error: error.message
     });
   }
-});
+};
 
 // Delete employee
 router.delete('/:id', auth, async (req, res) => {
