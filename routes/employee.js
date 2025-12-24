@@ -355,17 +355,17 @@ const handleEmployeeUpdate = async (req, res) => {
     }
 
     const employeeData = {
-      full_name: String(fullName || ''),
-      mobile_number: String(mobileNumber),
-      role: String(role || ''),
-      photo_url: photoUrl,
-      employee_type: String(employeeType || 'Full-Time'),
+      full_name: fullName !== undefined ? String(fullName) : null,
+      mobile_number: mobileNumber !== undefined ? String(mobileNumber) : null,
+      role: role !== undefined ? String(role) : null,
+      photo_url: photoUrl !== undefined ? photoUrl : null,
+      employee_type: employeeType !== undefined ? String(employeeType) : 'Full-Time',
       joining_date: formattedJoiningDate,
       contract_end_date: formattedContractEndDate,
-      salary_type: String(salaryType || 'Monthly'),
+      salary_type: salaryType !== undefined ? String(salaryType) : 'Monthly',
       salary_amount: processedSalaryAmount,
-      emergency_contact_name: String(emergencyContactName || ''),
-      emergency_contact_number: String(emergencyContactNumber || '')
+      emergency_contact_name: emergencyContactName !== undefined ? String(emergencyContactName) : null,
+      emergency_contact_number: emergencyContactNumber !== undefined ? String(emergencyContactNumber) : null
     };
 
     const updated = await Employee.update(employeeId, ownerId, employeeData);
