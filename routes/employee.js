@@ -432,9 +432,14 @@ const handleEmployeeUpdate = async (req, res) => {
       emergency_contact_number: emergencyContactNumber !== undefined && emergencyContactNumber !== null && emergencyContactNumber !== '' ? String(emergencyContactNumber) : currentEmployee.emergency_contact_number
     };
 
+    console.log('Updating employee with data:', employeeData);
+    console.log('Employee ID:', employeeId, 'Owner ID:', ownerId);
+    
     const updated = await Employee.update(employeeId, ownerId, employeeData);
+    console.log('Update result:', updated);
 
     if (!updated) {
+      console.log('No rows were updated for employee ID:', employeeId, 'with owner ID:', ownerId);
       return res.status(404).json({
         success: false,
         message: 'Employee not found'
