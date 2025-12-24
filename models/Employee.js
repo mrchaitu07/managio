@@ -84,6 +84,20 @@ class Employee {
       remaining_amount: parseFloat(employee.salary_amount || 0) - totalPaid
     };
   }
+  
+  // Get basic employee data by ID for update operations
+  static async getBasicById(id, ownerId) {
+    const [rows] = await db.execute(
+      `SELECT * FROM employees WHERE id = ? AND owner_id = ?`,
+      [id, ownerId]
+    );
+    
+    if (rows.length === 0) {
+      return null;
+    }
+    
+    return rows[0];
+  }
 
   // Update employee
   static async update(id, ownerId, employeeData) {

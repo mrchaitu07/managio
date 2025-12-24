@@ -261,17 +261,10 @@ const handleEmployeeUpdate = async (req, res) => {
     
     if (isEmployeeUpdatingOwnProfile) {
       // When an employee is updating their own profile, check if the employee exists and belongs to their owner
-      const [employeeResult] = await db.execute(
-        'SELECT * FROM employees WHERE id = ? AND owner_id = ?',
-        [employeeId, owner_id]
-      );
-      
-      if (employeeResult.length > 0) {
-        currentEmployee = employeeResult[0];
-      }
+      currentEmployee = await Employee.getBasicById(employeeId, owner_id);
     } else {
       // For owners or when updating other employees, use the existing method
-      currentEmployee = await Employee.getById(employeeId, owner_id);
+      currentEmployee = await Employee.getBasicById(employeeId, owner_id);
     }
     
     if (!currentEmployee) {
