@@ -409,7 +409,11 @@ const handleEmployeeUpdate = async (req, res) => {
     // Handle photo URL - use uploaded file path if available, otherwise use provided URL
     let photoUrl = req.body.photoUrl;
     if (req.file) {
+      // If a file was uploaded, use the file path regardless of what's in the body
       photoUrl = `/uploads/${req.file.filename}`; // Store the path to the uploaded file
+    } else if (req.body.photoUrl === 'null' || req.body.photoUrl === 'undefined') {
+      // Handle string representations of null/undefined
+      photoUrl = null;
     }
 
     const employeeData = {
