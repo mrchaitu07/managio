@@ -30,6 +30,19 @@ router.post('/add', auth, async (req, res) => {
         message: 'Please provide all required fields'
       });
     }
+    
+    // Check if employee with this mobile number already exists across ALL businesses
+    const [existingEmployees] = await db.execute(
+      'SELECT id, full_name, mobile_number, owner_id FROM employees WHERE mobile_number = ? AND is_active = TRUE',
+      [mobileNumber]
+    );
+    
+    if (existingEmployees.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'An employee with this mobile number already exists in the system. Each mobile number can only be used once across all businesses.'
+      });
+    }
 
     // Convert joining date format (DD MMM YYYY to YYYY-MM-DD)
     const joiningDateParts = joiningDate.split(' ');
@@ -152,6 +165,30 @@ router.put('/:id', auth, async (req, res) => {
       emergencyContactName,
       emergencyContactNumber
     } = req.body;
+
+    // First, get the current employee to check if mobile number is being changed
+    const currentEmployee = await Employee.getById(id, owner_id);
+    if (!currentEmployee) {
+      return res.status(404).json({
+        success: false,
+        message: 'Employee not found'
+      });
+    }
+    
+    // Check if mobile number is being changed and if the new number already exists
+    if (currentEmployee.mobile_number !== mobileNumber) {
+      const [existingEmployees] = await db.execute(
+        'SELECT id, full_name, mobile_number FROM employees WHERE mobile_number = ? AND is_active = TRUE AND id != ?',
+        [mobileNumber, id]
+      );
+      
+      if (existingEmployees.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'An employee with this mobile number already exists in the system. Each mobile number can only be used once across all businesses.'
+        });
+      }
+    }
 
     // Convert joining date format (DD MMM YYYY to YYYY-MM-DD) if provided
     let formattedJoiningDate = null;
@@ -279,26 +316,27 @@ router.post('/check-mobile', auth, async (req, res) => {
       });
     }
     
-    // Check if employee with this mobile number already exists for this owner
+    // Check if employee with this mobile number already exists across ALL businesses
     const [employees] = await db.execute(
-      'SELECT id, full_name, mobile_number FROM employees WHERE mobile_number = ? AND owner_id = ? AND is_active = TRUE',
-      [mobileNumber, owner_id]
+      'SELECT id, full_name, mobile_number, owner_id FROM employees WHERE mobile_number = ? AND is_active = TRUE',
+      [mobileNumber]
     );
     
     if (employees.length > 0) {
       return res.status(200).json({
         success: true,
         exists: true,
-        message: 'Employee with this mobile number already exists',
+        message: 'Employee with this mobile number already exists in the system',
         employee: {
           id: employees[0].id,
           full_name: employees[0].full_name,
-          mobile_number: employees[0].mobile_number
+          mobile_number: employees[0].mobile_number,
+          owner_id: employees[0].owner_id
         }
       });
     }
     
-    // Mobile number doesn't exist for this owner
+    // Mobile number doesn't exist in any business
     return res.status(200).json({
       success: true,
       exists: false,
