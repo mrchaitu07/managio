@@ -101,14 +101,38 @@ class Employee {
       emergency_contact_number
     } = employeeData;
 
+    // Convert undefined values to null to prevent database binding errors
+    const processedData = {
+      full_name: full_name !== undefined ? full_name : null,
+      mobile_number: mobile_number !== undefined ? mobile_number : null,
+      role: role !== undefined ? role : null,
+      photo_url: photo_url !== undefined ? photo_url : null,
+      employee_type: employee_type !== undefined ? employee_type : null,
+      joining_date: joining_date !== undefined ? joining_date : null,
+      contract_end_date: contract_end_date !== undefined ? contract_end_date : null,
+      salary_type: salary_type !== undefined ? salary_type : null,
+      salary_amount: salary_amount !== undefined ? salary_amount : null,
+      emergency_contact_name: emergency_contact_name !== undefined ? emergency_contact_name : null,
+      emergency_contact_number: emergency_contact_number !== undefined ? emergency_contact_number : null
+    };
+
     const [result] = await db.execute(
       `UPDATE employees SET 
         full_name = ?, mobile_number = ?, role = ?, photo_url = ?, employee_type = ?,
         joining_date = ?, contract_end_date = ?, salary_type = ?, salary_amount = ?, emergency_contact_name = ?, emergency_contact_number = ?
        WHERE id = ? AND owner_id = ?`,
       [
-        full_name, mobile_number, role, photo_url, employee_type,
-        joining_date, contract_end_date, salary_type, salary_amount, emergency_contact_name, emergency_contact_number,
+        processedData.full_name, 
+        processedData.mobile_number, 
+        processedData.role, 
+        processedData.photo_url, 
+        processedData.employee_type,
+        processedData.joining_date, 
+        processedData.contract_end_date, 
+        processedData.salary_type, 
+        processedData.salary_amount, 
+        processedData.emergency_contact_name, 
+        processedData.emergency_contact_number,
         id, ownerId
       ]
     );
