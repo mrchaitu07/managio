@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Employee = require('../models/Employee');
 const auth = require('../middleware/auth');
+const db = require('../config/db');
 
 // Add new employee
 router.post('/add', auth, async (req, res) => {
@@ -260,6 +261,55 @@ router.get('/stats/count', auth, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to get employee count',
+      error: error.message
+    });
+  }
+});
+
+// Check if employee with mobile number already exists
+router.post('/check-mobile', auth, async (req, res) => {
+  try {
+    const owner_id = req.user.id;
+    const { mobileNumber } = req.body;
+    
+    if (!mobileNumber) {
+      return res.status(400).json({
+        success: false,
+        message: 'Mobile number is required'
+      });
+    }
+    
+    // Check if employee with this mobile number already exists for this owner
+    const [employees] = await db.execute(
+      'SELECT id, full_name, mobile_number FROM employees WHERE mobile_number = ? AND owner_id = ? AND is_active = TRUE',
+      [mobileNumber, owner_id]
+    );
+    
+    if (employees.length > 0) {
+      return res.status(200).json({
+        success: true,
+        exists: true,
+        message: 'Employee with this mobile number already exists',
+        employee: {
+          id: employees[0].id,
+          full_name: employees[0].full_name,
+          mobile_number: employees[0].mobile_number
+        }
+      });
+    }
+    
+    // Mobile number doesn't exist for this owner
+    return res.status(200).json({
+      success: true,
+      exists: false,
+      message: 'Employee with this mobile number does not exist'
+    });
+    
+  } catch (error) {
+    console.error('Check employee mobile error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to check employee mobile number',
       error: error.message
     });
   }
