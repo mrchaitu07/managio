@@ -192,7 +192,17 @@ const handleEmployeeUpdate = async (req, res) => {
     // If user is an owner, use their own ID
     const requestingUserId = req.user.id;
     const requestingUserRole = req.user.role;
-    const owner_id = req.user.role === 'employee' ? req.user.owner_id : req.user.id;
+    
+    // Determine the appropriate owner ID based on role
+    let owner_id;
+    if (req.user.role === 'employee') {
+      // For employees, use their assigned owner's ID
+      owner_id = req.user.owner_id;
+    } else {
+      // For owners and any other roles, use the user's own ID
+      owner_id = req.user.id;
+    }
+    
     const { id } = req.params;
     
     // Handle both regular JSON and multipart form data
