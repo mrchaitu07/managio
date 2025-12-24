@@ -195,9 +195,15 @@ const handleEmployeeUpdate = async (req, res) => {
     
     // Determine the appropriate owner ID based on role
     let owner_id;
+    let isEmployeeUpdatingOwnProfile = false;
+    
     if (req.user.role === 'employee') {
       // For employees, use their assigned owner's ID
       owner_id = req.user.owner_id;
+      // Check if the employee is trying to update their own profile
+      if (parseInt(req.params.id, 10) === req.user.id) {
+        isEmployeeUpdatingOwnProfile = true;
+      }
     } else {
       // For owners and any other roles, use the user's own ID
       owner_id = req.user.id;
@@ -250,9 +256,26 @@ const handleEmployeeUpdate = async (req, res) => {
       });
     }
     
-    const currentEmployee = await Employee.getById(employeeId, ownerId);
+    // For employees updating their own profile, we need to check differently
+    let currentEmployee = null;
+    
+    if (isEmployeeUpdatingOwnProfile) {
+      // When an employee is updating their own profile, check if the employee exists and belongs to their owner
+      const [employeeResult] = await db.execute(
+        'SELECT * FROM employees WHERE id = ? AND owner_id = ?',
+        [employeeId, owner_id]
+      );
+      
+      if (employeeResult.length > 0) {
+        currentEmployee = employeeResult[0];
+      }
+    } else {
+      // For owners or when updating other employees, use the existing method
+      currentEmployee = await Employee.getById(employeeId, owner_id);
+    }
+    
     if (!currentEmployee) {
-      console.log(`Employee with ID ${employeeId} not found for owner ${ownerId}`);
+      console.log(`Employee with ID ${employeeId} not found for owner ${owner_id}`);
       // Check if employee exists but belongs to different owner
       const [checkResult] = await db.execute(
         'SELECT id, owner_id FROM employees WHERE id = ?',
@@ -260,7 +283,7 @@ const handleEmployeeUpdate = async (req, res) => {
       );
       
       if (checkResult.length > 0) {
-        console.log(`Employee ${employeeId} exists but belongs to owner ${checkResult[0].owner_id}, not ${ownerId}`);
+        console.log(`Employee ${employeeId} exists but belongs to owner ${checkResult[0].owner_id}, not ${owner_id}`);
       } else {
         console.log(`Employee ${employeeId} does not exist in the system`);
       }
@@ -270,7 +293,7 @@ const handleEmployeeUpdate = async (req, res) => {
         message: 'Employee not found'
       });
     } else {
-      console.log(`Employee ${employeeId} found for owner ${ownerId}`);
+      console.log(`Employee ${employeeId} found for owner ${owner_id}`);
     }
     
     // Check if mobile number is being changed and if the new number already exists
