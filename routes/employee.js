@@ -133,12 +133,55 @@ router.get('/list', auth, async (req, res) => {
 // Get employee by ID
 router.get('/:id', auth, async (req, res) => {
   try {
-    const owner_id = req.user.id;
+    // Get the owner ID based on the user role
+    // If user is an employee, use their owner_id
+    // If user is an owner, use their own ID
+    const requestingUserId = req.user.id;
+    const requestingUserRole = req.user.role;
+    
+    let owner_id;
+    let isEmployeeAccessingOwnProfile = false;
+    
+    if (req.user.role === 'employee') {
+      // For employees, use their assigned owner's ID
+      owner_id = req.user.owner_id;
+      // Check if the employee is accessing their own profile
+      if (parseInt(req.params.id, 10) === req.user.id) {
+        isEmployeeAccessingOwnProfile = true;
+      }
+    } else {
+      // For owners and any other roles, use the user's own ID
+      owner_id = req.user.id;
+    }
+    
     const { id } = req.params;
+    
+    console.log('Get Employee Request - Employee ID:', id, 'Owner ID:', owner_id, 'Requesting User ID:', requestingUserId, 'Requesting User Role:', requestingUserRole);
 
-    const employee = await Employee.getById(id, owner_id);
+    let employee = null;
+    
+    if (isEmployeeAccessingOwnProfile) {
+      // When an employee is accessing their own profile, check if the employee exists and belongs to their owner
+      employee = await Employee.getBasicById(id, owner_id);
+    } else {
+      // For owners or when accessing other employees, use the existing method
+      employee = await Employee.getBasicById(id, owner_id);
+    }
 
     if (!employee) {
+      console.log(`Employee with ID ${id} not found for owner ${owner_id}`);
+      // Check if employee exists but belongs to different owner
+      const [checkResult] = await db.execute(
+        'SELECT id, owner_id FROM employees WHERE id = ?',
+        [id]
+      );
+      
+      if (checkResult.length > 0) {
+        console.log(`Employee ${id} exists but belongs to owner ${checkResult[0].owner_id}, not ${owner_id}`);
+      } else {
+        console.log(`Employee ${id} does not exist in the system`);
+      }
+      
       return res.status(404).json({
         success: false,
         message: 'Employee not found'
