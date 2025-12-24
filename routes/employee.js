@@ -199,12 +199,40 @@ router.put('/:id', upload.single('photoUrl'), auth, async (req, res) => {
     } = req.body;
 
     // First, get the current employee to check if mobile number is being changed
-    const currentEmployee = await Employee.getById(id, owner_id);
+    // Ensure proper type conversion for database query
+    const employeeId = parseInt(id, 10);
+    const ownerId = req.user.id; // This comes from auth middleware
+    
+    console.log('Update Employee Request - ID:', employeeId, 'Owner ID:', ownerId, 'User from token:', req.user);
+    
+    if (isNaN(employeeId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid employee ID provided'
+      });
+    }
+    
+    const currentEmployee = await Employee.getById(employeeId, ownerId);
     if (!currentEmployee) {
+      console.log(`Employee with ID ${employeeId} not found for owner ${ownerId}`);
+      // Check if employee exists but belongs to different owner
+      const [checkResult] = await db.execute(
+        'SELECT id, owner_id FROM employees WHERE id = ?',
+        [employeeId]
+      );
+      
+      if (checkResult.length > 0) {
+        console.log(`Employee ${employeeId} exists but belongs to owner ${checkResult[0].owner_id}, not ${ownerId}`);
+      } else {
+        console.log(`Employee ${employeeId} does not exist in the system`);
+      }
+      
       return res.status(404).json({
         success: false,
         message: 'Employee not found'
       });
+    } else {
+      console.log(`Employee ${employeeId} found for owner ${ownerId}`);
     }
     
     // Check if mobile number is being changed and if the new number already exists
@@ -212,7 +240,7 @@ router.put('/:id', upload.single('photoUrl'), auth, async (req, res) => {
     if (currentEmployee.mobile_number !== String(mobileNumber)) {
       const [existingEmployees] = await db.execute(
         'SELECT id, full_name, mobile_number FROM employees WHERE mobile_number = ? AND is_active = TRUE AND id != ?',
-        [String(mobileNumber), id]
+        [String(mobileNumber), employeeId]
       );
       
       if (existingEmployees.length > 0) {
@@ -279,7 +307,7 @@ router.put('/:id', upload.single('photoUrl'), auth, async (req, res) => {
       emergency_contact_number: String(emergencyContactNumber || '')
     };
 
-    const updated = await Employee.update(id, owner_id, employeeData);
+    const updated = await Employee.update(employeeId, ownerId, employeeData);
 
     if (!updated) {
       return res.status(404).json({
