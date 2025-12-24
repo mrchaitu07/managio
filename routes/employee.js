@@ -416,18 +416,19 @@ const handleEmployeeUpdate = async (req, res) => {
       photoUrl = null;
     }
 
+    // Only update fields that are provided, keeping existing values for others
     const employeeData = {
-      full_name: fullName !== undefined ? String(fullName) : null,
-      mobile_number: mobileNumber !== undefined ? String(mobileNumber) : null,
-      role: role !== undefined ? String(role) : null,
-      photo_url: photoUrl !== undefined ? photoUrl : null,
-      employee_type: employeeType !== undefined ? String(employeeType) : 'Full-Time',
-      joining_date: formattedJoiningDate,
-      contract_end_date: formattedContractEndDate,
-      salary_type: salaryType !== undefined ? String(salaryType) : 'Monthly',
-      salary_amount: processedSalaryAmount,
-      emergency_contact_name: emergencyContactName !== undefined ? String(emergencyContactName) : null,
-      emergency_contact_number: emergencyContactNumber !== undefined ? String(emergencyContactNumber) : null
+      full_name: fullName !== undefined && fullName !== null && fullName !== '' ? String(fullName) : currentEmployee.full_name,
+      mobile_number: mobileNumber !== undefined && mobileNumber !== null && mobileNumber !== '' ? String(mobileNumber) : currentEmployee.mobile_number,
+      role: role !== undefined && role !== null && role !== '' ? String(role) : currentEmployee.role,
+      photo_url: photoUrl !== undefined && photoUrl !== null ? photoUrl : currentEmployee.photo_url,
+      employee_type: employeeType !== undefined && employeeType !== null && employeeType !== '' ? String(employeeType) : currentEmployee.employee_type,
+      joining_date: formattedJoiningDate !== null ? formattedJoiningDate : currentEmployee.joining_date,
+      contract_end_date: formattedContractEndDate !== null ? formattedContractEndDate : currentEmployee.contract_end_date,
+      salary_type: salaryType !== undefined && salaryType !== null && salaryType !== '' ? String(salaryType) : currentEmployee.salary_type,
+      salary_amount: processedSalaryAmount !== undefined && processedSalaryAmount !== null ? processedSalaryAmount : currentEmployee.salary_amount,
+      emergency_contact_name: emergencyContactName !== undefined && emergencyContactName !== null && emergencyContactName !== '' ? String(emergencyContactName) : currentEmployee.emergency_contact_name,
+      emergency_contact_number: emergencyContactNumber !== undefined && emergencyContactNumber !== null && emergencyContactNumber !== '' ? String(emergencyContactNumber) : currentEmployee.emergency_contact_number
     };
 
     const updated = await Employee.update(employeeId, ownerId, employeeData);
