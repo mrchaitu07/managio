@@ -206,8 +206,8 @@ router.get('/:id', auth, async (req, res) => {
 // Update employee
 // Handle both regular JSON and multipart form data
 router.put('/:id', auth, (req, res, next) => {
-  // Check if the request is multipart
-  if (req.headers['content-type'] && req.headers['content-type'].startsWith('multipart/form-data')) {
+  // Check if the request is multipart (React Native may send content-type differently)
+  if (req.headers['content-type'] && (req.headers['content-type'].startsWith('multipart/form-data') || req.headers['content-type'].includes('multipart/form-data'))) {
     // Use multer middleware for multipart requests
     upload.single('photoUrl')(req, res, (err) => {
       if (err) {
@@ -273,6 +273,10 @@ const handleEmployeeUpdate = async (req, res) => {
     }
     
     console.log('Update Employee Request - Employee ID:', id, 'Owner ID:', owner_id, 'Requesting User ID:', requestingUserId, 'Requesting User Role:', requestingUserRole, 'User from token:', req.user);
+    console.log('Content-Type header:', req.headers['content-type']);
+    console.log('Is multipart request:', req.headers['content-type'] && (req.headers['content-type'].startsWith('multipart/form-data') || req.headers['content-type'].includes('multipart/form-data')));
+    console.log('Request body keys:', Object.keys(req.body));
+    console.log('Request file:', req.file ? 'File present' : 'No file');
     
     // Extract fields from request body
     const {
@@ -411,9 +415,15 @@ const handleEmployeeUpdate = async (req, res) => {
     if (req.file) {
       // If a file was uploaded, use the file path regardless of what's in the body
       photoUrl = `/uploads/${req.file.filename}`; // Store the path to the uploaded file
+      console.log('File uploaded successfully, new photoUrl:', photoUrl);
     } else if (req.body.photoUrl === 'null' || req.body.photoUrl === 'undefined') {
       // Handle string representations of null/undefined
       photoUrl = null;
+      console.log('Photo URL set to null from string representation');
+    } else {
+      // Use the photoUrl from the body if no file was uploaded
+      photoUrl = req.body.photoUrl;
+      console.log('Using photoUrl from request body:', photoUrl);
     }
 
     // Only update fields that are provided, keeping existing values for others

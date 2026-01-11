@@ -2,6 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const db = require('./config/db');
+// Initialize Firebase Admin SDK
+require('./config/firebaseAdmin');
 const fs = require('fs');
 const path = require('path');
 
@@ -68,6 +70,24 @@ app.use('/api/employee-business-settings', require('./routes/employeeBusinessSet
 // Payment routes
 app.use('/api/payments', require('./routes/payments'));
 
+// Holiday routes
+app.use('/api/holidays', require('./routes/holidays'));
+
+// Customer routes
+app.use('/api/customers', require('./routes/customers'));
+
+// Customer Sales routes
+app.use('/api/customer-sales', require('./routes/customerSales'));
+
+// Customer Payments routes
+app.use('/api/customer-payments', require('./routes/customerPayments'));
+
+// Customer Notifications routes
+app.use('/api/customer-notifications', require('./routes/customerNotifications'));
+
+// Businesses routes
+app.use('/api/businesses', require('./routes/businesses'));
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
@@ -80,7 +100,7 @@ app.use((req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on port ${PORT}`);
 });
 

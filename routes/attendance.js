@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 const auth = require('../middleware/auth');
+const NotificationService = require('../services/notificationService');
 
 // Mark attendance directly (for location-based attendance)
 router.post('/mark-attendance-direct', auth, async (req, res) => {
@@ -627,10 +628,10 @@ router.post('/mark-attendance-manual', auth, async (req, res) => {
     }
     
     // Validate status
-    if (status !== 'present' && status !== 'absent') {
+    if (status !== 'present' && status !== 'absent' && status !== 'late' && status !== 'half_day' && status !== 'paid_leave') {
       return res.status(400).json({
         success: false,
-        message: 'Status must be either "present" or "absent"'
+        message: 'Status must be one of: "present", "absent", "late", "half_day", or "paid_leave"'
       });
     }
     
@@ -688,13 +689,6 @@ router.post('/mark-attendance-manual', auth, async (req, res) => {
       [employeeId, todayFormatted]
     );
     
-    if (existingAttendance.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Attendance already marked for today'
-      });
-    }
-    
     // Mark attendance based on status
     if (status === 'present') {
       // For present, mark with current time
@@ -706,38 +700,127 @@ router.post('/mark-attendance-manual', auth, async (req, res) => {
       const currentTimeFormatted = istTime.toISOString().slice(0, 19).replace('T', ' ');
       const timePortion = istTime.toTimeString().split(' ')[0]; // Gets HH:MM:SS format
       
-      const [result] = await db.execute(
-        'INSERT INTO employee_attendance (employee_id, business_id, owner_id, attendance_date, check_in_time, status) VALUES (?, ?, ?, ?, ?, ?)',
-        [employeeId, businessId, employees[0].owner_id, todayFormatted, timePortion, 'present']
-      );
-      
-      res.json({
-        success: true,
-        attendanceId: result.insertId,
-        message: 'Attendance marked as present successfully',
-        data: {
-          employeeName: employees[0].full_name,
-          time: istTime.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })
+      if (existingAttendance.length > 0) {
+        // Update existing record
+        const [result] = await db.execute(
+          'UPDATE employee_attendance SET status = ?, check_in_time = ?, absent_reason = NULL, updated_at = ? WHERE id = ?',
+          [status, timePortion, currentTimeFormatted, existingAttendance[0].id]
+        );
+        
+        // Send notification to employee about attendance
+        if (status === 'present') {
+          try {
+            await NotificationService.sendGeneralNotification(
+              employeeId,
+              'employee',
+              'Attendance Updated',
+              `Your attendance has been updated to ${status} at ${timePortion} today.`,
+              {
+                type: 'attendance_update',
+                status: status,
+                date: todayFormatted,
+                time: timePortion
+              }
+            );
+          } catch (notificationError) {
+            console.error('Error sending attendance notification:', notificationError);
+            // Continue with response even if notification fails
+          }
         }
-      });
+        
+        res.json({
+          success: true,
+          attendanceId: existingAttendance[0].id,
+          message: `Attendance updated to ${status} successfully`,
+          data: {
+            employeeName: employees[0].full_name,
+            time: istTime.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })
+          }
+        });
+      } else {
+        // Insert new record
+        // Send notification to employee about attendance
+        if (status === 'present') {
+          try {
+            await NotificationService.sendGeneralNotification(
+              employeeId,
+              'employee',
+              'Attendance Marked',
+              `Your attendance has been marked as ${status} at ${timePortion} today.`,
+              {
+                type: 'attendance_update',
+                status: status,
+                date: todayFormatted,
+                time: timePortion
+              }
+            );
+          } catch (notificationError) {
+            console.error('Error sending attendance notification:', notificationError);
+            // Continue with response even if notification fails
+          }
+        }
+
+        const [result] = await db.execute(
+          'INSERT INTO employee_attendance (employee_id, business_id, owner_id, attendance_date, check_in_time, status) VALUES (?, ?, ?, ?, ?, ?)',
+          [employeeId, businessId, employees[0].owner_id, todayFormatted, timePortion, status]
+        );
+        
+        res.json({
+          success: true,
+          attendanceId: result.insertId,
+          message: `Attendance marked as ${status} successfully`,
+          data: {
+            employeeName: employees[0].full_name,
+            time: istTime.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })
+          }
+        });
+      }
     } else {
-      // For absent, mark with absent status and reason
+      // For absent, late, half_day, paid_leave - mark with status and reason
       // Ensure absentReason is null if undefined
       const safeAbsentReason = absentReason || null;
       
-      const [result] = await db.execute(
-        'INSERT INTO employee_attendance (employee_id, business_id, owner_id, attendance_date, status, absent_reason) VALUES (?, ?, ?, ?, ?, ?)',
-        [employeeId, businessId, employees[0].owner_id, todayFormatted, 'absent', safeAbsentReason]
-      );
+      // For present status, we use check_in_time, for others we use status column
+      let query, params;
       
-      res.json({
-        success: true,
-        attendanceId: result.insertId,
-        message: 'Attendance marked as absent successfully',
-        data: {
-          employeeName: employees[0].full_name
-        }
-      });
+      if (status === 'absent' || status === 'paid_leave') {
+        // For absent and paid leave, use absent_reason column
+        query = 'INSERT INTO employee_attendance (employee_id, business_id, owner_id, attendance_date, status, absent_reason) VALUES (?, ?, ?, ?, ?, ?)';
+        params = [employeeId, businessId, employees[0].owner_id, todayFormatted, status, safeAbsentReason];
+      } else {
+        // For late and half_day, use absent_reason column as well
+        query = 'INSERT INTO employee_attendance (employee_id, business_id, owner_id, attendance_date, status, absent_reason) VALUES (?, ?, ?, ?, ?, ?)';
+        params = [employeeId, businessId, employees[0].owner_id, todayFormatted, status, safeAbsentReason];
+      }
+      
+      if (existingAttendance.length > 0) {
+        // Update existing record
+        const [result] = await db.execute(
+          'UPDATE employee_attendance SET status = ?, absent_reason = ?, updated_at = NOW() WHERE id = ?',
+          [status, safeAbsentReason, existingAttendance[0].id]
+        );
+        
+        res.json({
+          success: true,
+          attendanceId: existingAttendance[0].id,
+          message: `Attendance updated to ${status} successfully`,
+          data: {
+            employeeName: employees[0].full_name
+          }
+        });
+      } else {
+        // Insert new record
+        const [result] = await db.execute(query, params);
+        
+        res.json({
+          success: true,
+          attendanceId: result.insertId,
+          message: `Attendance marked as ${status} successfully`,
+          data: {
+            employeeName: employees[0].full_name
+          }
+        });
+      }
     }
   } catch (error) {
     console.error('Error marking manual attendance:', error);
@@ -763,10 +846,10 @@ router.post('/mark-for-date', auth, async (req, res) => {
     }
     
     // Validate status
-    if (status !== 'present' && status !== 'absent') {
+    if (status !== 'present' && status !== 'absent' && status !== 'late' && status !== 'half_day' && status !== 'paid_leave') {
       return res.status(400).json({
         success: false,
-        message: 'Status must be either "present" or "absent"'
+        message: 'Status must be one of: "present", "absent", "late", "half_day", or "paid_leave"'
       });
     }
     
@@ -818,6 +901,19 @@ router.post('/mark-for-date', auth, async (req, res) => {
     
     const businessId = businesses[0].id;
     
+    // Check if the date is a holiday for the business
+    const [holidays] = await db.execute(
+      'SELECT id FROM holidays WHERE business_id = ? AND holiday_date = ?',
+      [businessId, formattedDate]
+    );
+    
+    if (holidays.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot mark attendance on a holiday date'
+      });
+    }
+    
     // Check if attendance record already exists for this date
     const [existingAttendance] = await db.execute(
       `SELECT id FROM employee_attendance 
@@ -825,13 +921,6 @@ router.post('/mark-for-date', auth, async (req, res) => {
        AND attendance_date = ?`,
       [employeeId, formattedDate]
     );
-    
-    if (existingAttendance.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Attendance already marked for this date'
-      });
-    }
     
     // Mark attendance based on status
     if (status === 'present') {
@@ -843,40 +932,89 @@ router.post('/mark-for-date', auth, async (req, res) => {
       
       const timePortion = istTime.toTimeString().split(' ')[0]; // Gets HH:MM:SS format
       
-      const [result] = await db.execute(
-        'INSERT INTO employee_attendance (employee_id, business_id, owner_id, attendance_date, check_in_time, status) VALUES (?, ?, ?, ?, ?, ?)',
-        [employeeId, businessId, employees[0].owner_id, formattedDate, timePortion, 'present']
-      );
-      
-      res.json({
-        success: true,
-        attendanceId: result.insertId,
-        message: 'Attendance marked as present successfully',
-        data: {
-          employeeName: employees[0].full_name,
-          date: formattedDate,
-          time: istTime.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })
-        }
-      });
+      if (existingAttendance.length > 0) {
+        // Update existing record
+        const [result] = await db.execute(
+          'UPDATE employee_attendance SET status = ?, check_in_time = ?, absent_reason = NULL, updated_at = ? WHERE id = ?',
+          [status, timePortion, istTime.toISOString().slice(0, 19).replace('T', ' '), existingAttendance[0].id]
+        );
+        
+        res.json({
+          success: true,
+          attendanceId: existingAttendance[0].id,
+          message: `Attendance updated to ${status} successfully`,
+          data: {
+            employeeName: employees[0].full_name,
+            date: formattedDate,
+            time: istTime.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })
+          }
+        });
+      } else {
+        // Insert new record
+        const [result] = await db.execute(
+          'INSERT INTO employee_attendance (employee_id, business_id, owner_id, attendance_date, check_in_time, status) VALUES (?, ?, ?, ?, ?, ?)',
+          [employeeId, businessId, employees[0].owner_id, formattedDate, timePortion, status]
+        );
+        
+        res.json({
+          success: true,
+          attendanceId: result.insertId,
+          message: `Attendance marked as ${status} successfully`,
+          data: {
+            employeeName: employees[0].full_name,
+            date: formattedDate,
+            time: istTime.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })
+          }
+        });
+      }
     } else {
-      // For absent, mark with absent status and reason
+      // For absent, late, half_day, paid_leave - mark with status and reason
       // Ensure absentReason is null if undefined
       const safeAbsentReason = absentReason || null;
       
-      const [result] = await db.execute(
-        'INSERT INTO employee_attendance (employee_id, business_id, owner_id, attendance_date, status, absent_reason) VALUES (?, ?, ?, ?, ?, ?)',
-        [employeeId, businessId, employees[0].owner_id, formattedDate, 'absent', safeAbsentReason]
-      );
+      // For present status, we use check_in_time, for others we use status column
+      let query, params;
       
-      res.json({
-        success: true,
-        attendanceId: result.insertId,
-        message: 'Attendance marked as absent successfully',
-        data: {
-          employeeName: employees[0].full_name,
-          date: formattedDate
-        }
-      });
+      if (status === 'absent' || status === 'paid_leave') {
+        // For absent and paid leave, use absent_reason column
+        query = 'INSERT INTO employee_attendance (employee_id, business_id, owner_id, attendance_date, status, absent_reason) VALUES (?, ?, ?, ?, ?, ?)';
+        params = [employeeId, businessId, employees[0].owner_id, formattedDate, status, safeAbsentReason];
+      } else {
+        // For late and half_day, use absent_reason column as well
+        query = 'INSERT INTO employee_attendance (employee_id, business_id, owner_id, attendance_date, status, absent_reason) VALUES (?, ?, ?, ?, ?, ?)';
+        params = [employeeId, businessId, employees[0].owner_id, formattedDate, status, safeAbsentReason];
+      }
+      
+      if (existingAttendance.length > 0) {
+        // Update existing record
+        const [result] = await db.execute(
+          'UPDATE employee_attendance SET status = ?, absent_reason = ?, updated_at = NOW() WHERE id = ?',
+          [status, safeAbsentReason, existingAttendance[0].id]
+        );
+        
+        res.json({
+          success: true,
+          attendanceId: existingAttendance[0].id,
+          message: `Attendance updated to ${status} successfully`,
+          data: {
+            employeeName: employees[0].full_name,
+            date: formattedDate
+          }
+        });
+      } else {
+        // Insert new record
+        const [result] = await db.execute(query, params);
+        
+        res.json({
+          success: true,
+          attendanceId: result.insertId,
+          message: `Attendance marked as ${status} successfully`,
+          data: {
+            employeeName: employees[0].full_name,
+            date: formattedDate
+          }
+        });
+      }
     }
   } catch (error) {
     console.error('Error marking attendance for date:', error);

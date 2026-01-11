@@ -126,3 +126,80 @@ CREATE TABLE IF NOT EXISTS employee_attendance (
     INDEX idx_date (attendance_date),
     INDEX idx_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Customers table
+CREATE TABLE IF NOT EXISTS customers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    business_id INT NOT NULL,
+    customer_name VARCHAR(100) NOT NULL,
+    customer_mobile VARCHAR(15),
+    customer_email VARCHAR(100),
+    customer_address TEXT,
+
+    balance_due DECIMAL(10, 2) DEFAULT 0.00,
+    total_spent DECIMAL(10, 2) DEFAULT 0.00,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
+    INDEX idx_business (business_id),
+    INDEX idx_customer_name (customer_name),
+    INDEX idx_customer_mobile (customer_mobile),
+    INDEX idx_customer_email (customer_email)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Customer Sales table
+CREATE TABLE IF NOT EXISTS customer_sales (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id INT NOT NULL,
+    product_name VARCHAR(255) NOT NULL,
+    quantity INT NOT NULL,
+    price DECIMAL(10, 2) NOT NULL,
+    total_amount DECIMAL(10, 2) NOT NULL,
+    sale_date DATE NOT NULL,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
+    INDEX idx_customer (customer_id),
+    INDEX idx_sale_date (sale_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Customer Payments table
+CREATE TABLE IF NOT EXISTS customer_payments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id INT NOT NULL,
+    amount DECIMAL(10, 2) NOT NULL,
+    payment_method VARCHAR(50) NOT NULL,
+    payment_date DATE NOT NULL,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
+    INDEX idx_customer (customer_id),
+    INDEX idx_payment_date (payment_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Employees table
+CREATE TABLE IF NOT EXISTS employees (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    owner_id INT NOT NULL,
+    full_name VARCHAR(100) NOT NULL,
+    mobile_number VARCHAR(15) NOT NULL,
+    role VARCHAR(100) NOT NULL,
+    photo_url VARCHAR(255),
+    employee_type ENUM('Full-Time', 'Part-Time', 'Contract', 'Intern') NOT NULL DEFAULT 'Full-Time',
+    joining_date DATE NOT NULL,
+    salary_type ENUM('Monthly', 'Daily', 'Hourly') NOT NULL DEFAULT 'Monthly',
+    salary_amount DECIMAL(10, 2) NOT NULL,
+    emergency_contact_name VARCHAR(100),
+    emergency_contact_number VARCHAR(15),
+    contract_end_date DATE,
+    is_active BOOLEAN DEFAULT TRUE,
+    fcm_token VARCHAR(255) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_owner (owner_id),
+    INDEX idx_mobile (mobile_number)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

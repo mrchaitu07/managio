@@ -84,19 +84,151 @@ router.post('/onboard', validateOnboarding, async (req, res) => {
     
     // Check if user already exists
     const [existingUsers] = await db.execute(
-      'SELECT id FROM users WHERE mobile_number = ?',
+      'SELECT id, role FROM users WHERE mobile_number = ?',
       [mobileNumber]
     );
 
+    let owner;
     if (existingUsers.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'User with this mobile number already exists'
-      });
-    }
+      // User already exists - check if they're an employee
+      const existingUser = existingUsers[0];
+      
+      if (existingUser.role === 'employee') {
+        // Update the user's role to owner and create business profile
+        // We'll still call the BusinessOwner.create method but need to handle this differently
+        
+        // First, update the user's role to owner
+        await db.execute(
+          'UPDATE users SET role = ? WHERE id = ?',
+          ['owner', existingUser.id]
+        );
+        
+        // Then create the business owner profile with the existing user ID
+        // We need to modify the create method to handle existing user IDs
+        const {
+          fullName,
+          businessName,
+          businessType,
+          businessCategory,
+          address,
+          city,
+          state,
+          pincode,
+          businessRole,
+          gender,
+          dateOfBirth,
+          attendanceMethod,
+          startTime,
+          endTime,
+          weeklyOff,
+          salaryCycle,
+          location
+        } = req.body;
+        
+        // Create profile, business, and settings for the existing user
+        const connection = await db.getConnection();
+        try {
+          await connection.beginTransaction();
 
-    // Create new business owner
-    const owner = await BusinessOwner.create(req.body);
+          // Create owner profile
+          const [profileResult] = await connection.execute(
+            `INSERT INTO owner_profiles (
+              user_id, full_name, business_role, gender, date_of_birth
+            ) VALUES (?, ?, ?, ?, ?)`,
+            [
+              existingUser.id, 
+              fullName, 
+              businessRole || null, 
+              gender || null, 
+              dateOfBirth || null
+            ]
+          );
+
+          // Create business
+          const [businessResult] = await connection.execute(
+            `INSERT INTO businesses (
+              owner_id, business_name, business_type, business_category, 
+              address, city, state, pincode, latitude, longitude
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              existingUser.id,
+              businessName,
+              businessType || null,
+              businessCategory || null,
+              address || null,
+              city || null,
+              state || null,
+              pincode || null,
+              location ? location.latitude : null,
+              location ? location.longitude : null
+            ]
+          );
+
+          const businessId = businessResult.insertId;
+
+          // Create business settings
+          const [settingsResult] = await connection.execute(
+            `INSERT INTO business_settings (
+              business_id, attendance_method, work_start_time, work_end_time, 
+              weekly_off_days, salary_cycle
+            ) VALUES (?, ?, ?, ?, ?, ?)`,
+            [
+              businessId,
+              attendanceMethod || 'qr_scan',
+              startTime || '09:00:00',
+              endTime || '17:00:00',
+              weeklyOff || null,
+              salaryCycle || 'monthly'
+            ]
+          );
+
+          await connection.commit();
+
+          // Return the complete owner object
+          owner = {
+            id: existingUser.id,
+            mobile_number: mobileNumber,
+            role: 'owner',
+            profile: {
+              id: profileResult.insertId,
+              user_id: existingUser.id,
+              full_name: fullName,
+              business_role: businessRole || null,
+              gender: gender || null,
+              date_of_birth: dateOfBirth || null
+            },
+            business: {
+              id: businessId,
+              owner_id: existingUser.id,
+              business_name: businessName,
+              business_type: businessType || null,
+              business_category: businessCategory || null,
+              address: address || null,
+              city: city || null,
+              state: state || null,
+              pincode: pincode || null,
+              latitude: location ? location.latitude : null,
+              longitude: location ? location.longitude : null
+            }
+          };
+        } catch (error) {
+          await connection.rollback();
+          console.error('Error updating employee to business owner:', error);
+          throw error;
+        } finally {
+          connection.release();
+        }
+      } else {
+        // User already exists as an owner
+        return res.status(400).json({
+          success: false,
+          message: 'User with this mobile number is already registered as an owner'
+        });
+      }
+    } else {
+      // Create new business owner (original flow)
+      owner = await BusinessOwner.create(req.body);
+    }
     
     // Generate JWT token
     const payload = {

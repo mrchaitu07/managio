@@ -130,6 +130,22 @@ class Employee {
       emergency_contact_number: emergency_contact_number !== undefined ? emergency_contact_number : null
     };
 
+    console.log('Updating employee with data:', {
+      id,
+      ownerId,
+      full_name: processedData.full_name, 
+      mobile_number: processedData.mobile_number, 
+      role: processedData.role, 
+      photo_url: processedData.photo_url, 
+      employee_type: processedData.employee_type,
+      joining_date: processedData.joining_date, 
+      contract_end_date: processedData.contract_end_date, 
+      salary_type: processedData.salary_type, 
+      salary_amount: processedData.salary_amount, 
+      emergency_contact_name: processedData.emergency_contact_name, 
+      emergency_contact_number: processedData.emergency_contact_number
+    });
+    
     const [result] = await db.execute(
       `UPDATE employees SET 
         full_name = ?, mobile_number = ?, role = ?, photo_url = ?, employee_type = ?,
@@ -150,6 +166,8 @@ class Employee {
         id, ownerId
       ]
     );
+    
+    console.log('Update query result:', result);
 
     return result.affectedRows > 0;
   }
