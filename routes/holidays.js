@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 const auth = require('../middleware/auth');
+const NotificationService = require('../services/notificationService');
 
 // Get holidays for a specific month and business
 router.get('/:businessId', auth, async (req, res) => {
@@ -100,6 +101,19 @@ router.post('/', auth, async (req, res) => {
       'SELECT id FROM employees WHERE owner_id = (SELECT owner_id FROM businesses WHERE id = ?) AND is_active = TRUE',
       [businessId]
     );
+
+    // Send notification to all employees about the new holiday
+    try {
+      const notificationResult = await NotificationService.sendHolidayNotification(
+        businessId,
+        holiday_date,
+        description || 'Holiday'
+      );
+      console.log('Holiday notification result:', notificationResult);
+    } catch (notificationError) {
+      console.error('Error sending holiday notification:', notificationError);
+      // Continue with the response even if notification fails
+    }
 
     if (employees.length > 0) {
       // Create placeholders for the IN clause

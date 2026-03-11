@@ -96,6 +96,28 @@ router.post('/mark-attendance-direct', auth, async (req, res) => {
       'INSERT INTO employee_attendance (employee_id, business_id, owner_id, attendance_date, check_in_time, status) VALUES (?, ?, ?, ?, ?, ?)',
       [employeeId, businessId, ownerId, todayFormatted, timePortion, 'present']
     );
+
+    // Notify owner asynchronously about the attendance mark
+    (async () => {
+      try {
+        await NotificationService.sendGeneralNotification(
+          ownerId,
+          'owner',
+          'Employee Attendance Marked',
+          `${employees[0].full_name} checked in at ${istTime.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })}`,
+          {
+            type: 'employee_attendance',
+            employeeId: employeeId.toString(),
+            attendanceId: result.insertId.toString(),
+            status: 'present',
+            date: todayFormatted,
+            time: timePortion
+          }
+        );
+      } catch (notifyError) {
+        console.warn('Owner attendance notification failed:', notifyError.message);
+      }
+    })();
     
     res.json({
       success: true,
@@ -323,6 +345,28 @@ router.post('/mark-attendance', auth, async (req, res) => {
       'INSERT INTO employee_attendance (employee_id, business_id, owner_id, session_id, attendance_date, check_in_time, status, qr_scanned_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       [employeeId, session.business_id, session.owner_id, sessionId, todayFormatted, timePortion, 'present', currentTimeFormatted]
     );
+
+    // Notify owner asynchronously about the attendance mark
+    (async () => {
+      try {
+        await NotificationService.sendGeneralNotification(
+          session.owner_id,
+          'owner',
+          'Employee Attendance Marked',
+          `${employees[0].full_name} checked in at ${currentTime.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })}`,
+          {
+            type: 'employee_attendance',
+            employeeId: employeeId.toString(),
+            attendanceId: result.insertId.toString(),
+            status: 'present',
+            date: todayFormatted,
+            time: timePortion
+          }
+        );
+      } catch (notifyError) {
+        console.warn('Owner attendance notification failed:', notifyError.message);
+      }
+    })();
     
     res.json({
       success: true,
@@ -460,6 +504,28 @@ router.post('/mark-checkout', auth, async (req, res) => {
       'UPDATE employee_attendance SET check_out_time = ?, updated_at = ? WHERE id = ?',
       [timePortion, currentTimeFormatted, existingAttendance[0].id]
     );
+
+    // Notify owner asynchronously about the checkout
+    (async () => {
+      try {
+        await NotificationService.sendGeneralNotification(
+          session.owner_id,
+          'owner',
+          'Employee Checked Out',
+          `${employees[0].full_name} checked out at ${currentTime.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })}`,
+          {
+            type: 'employee_checkout',
+            employeeId: employeeId.toString(),
+            attendanceId: existingAttendance[0].id.toString(),
+            status: 'checked_out',
+            date: todayFormatted,
+            time: timePortion
+          }
+        );
+      } catch (notifyError) {
+        console.warn('Owner checkout notification failed:', notifyError.message);
+      }
+    })();
     
     res.json({
       success: true,
@@ -595,6 +661,28 @@ router.post('/mark-checkout-direct', auth, async (req, res) => {
       'UPDATE employee_attendance SET check_out_time = ?, updated_at = ? WHERE id = ?',
       [timePortion, currentTimeFormatted, existingAttendance[0].id]
     );
+
+    // Notify owner asynchronously about the checkout
+    (async () => {
+      try {
+        await NotificationService.sendGeneralNotification(
+          ownerId,
+          'owner',
+          'Employee Checked Out',
+          `${employees[0].full_name} checked out at ${istTime.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })}`,
+          {
+            type: 'employee_checkout',
+            employeeId: employeeId.toString(),
+            attendanceId: existingAttendance[0].id.toString(),
+            status: 'checked_out',
+            date: todayFormatted,
+            time: timePortion
+          }
+        );
+      } catch (notifyError) {
+        console.warn('Owner checkout notification failed:', notifyError.message);
+      }
+    })();
     
     res.json({
       success: true,
@@ -728,6 +816,28 @@ router.post('/mark-attendance-manual', auth, async (req, res) => {
           }
         }
         
+        // Notify owner asynchronously about the attendance update
+        (async () => {
+          try {
+            await NotificationService.sendGeneralNotification(
+              employees[0].owner_id,
+              'owner',
+              'Employee Attendance Marked',
+              `${employees[0].full_name} checked in at ${istTime.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })}`,
+              {
+                type: 'employee_attendance',
+                employeeId: employeeId.toString(),
+                attendanceId: existingAttendance[0].id.toString(),
+                status: status,
+                date: todayFormatted,
+                time: timePortion
+              }
+            );
+          } catch (notifyError) {
+            console.warn('Owner attendance notification failed:', notifyError.message);
+          }
+        })();
+        
         res.json({
           success: true,
           attendanceId: existingAttendance[0].id,
@@ -764,6 +874,28 @@ router.post('/mark-attendance-manual', auth, async (req, res) => {
           'INSERT INTO employee_attendance (employee_id, business_id, owner_id, attendance_date, check_in_time, status) VALUES (?, ?, ?, ?, ?, ?)',
           [employeeId, businessId, employees[0].owner_id, todayFormatted, timePortion, status]
         );
+        
+        // Notify owner asynchronously about the new attendance record
+        (async () => {
+          try {
+            await NotificationService.sendGeneralNotification(
+              employees[0].owner_id,
+              'owner',
+              'Employee Attendance Marked',
+              `${employees[0].full_name} checked in at ${istTime.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })}`,
+              {
+                type: 'employee_attendance',
+                employeeId: employeeId.toString(),
+                attendanceId: result.insertId.toString(),
+                status: status,
+                date: todayFormatted,
+                time: timePortion
+              }
+            );
+          } catch (notifyError) {
+            console.warn('Owner attendance notification failed:', notifyError.message);
+          }
+        })();
         
         res.json({
           success: true,

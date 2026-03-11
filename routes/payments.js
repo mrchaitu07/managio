@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Payment = require('../models/Payment');
 const auth = require('../middleware/auth');
+const NotificationService = require('../services/notificationService');
 
 // Add a new payment
 router.post('/add', auth, async (req, res) => {
@@ -35,6 +36,33 @@ router.post('/add', auth, async (req, res) => {
     };
 
     const paymentId = await Payment.create(paymentData);
+
+    // Fire-and-forget notification to the employee
+    (async () => {
+      try {
+        const formattedDate = new Date(paymentDate).toLocaleDateString('en-IN');
+        const formattedAmount = new Intl.NumberFormat('en-IN', {
+          style: 'currency',
+          currency: 'INR'
+        }).format(parsedAmount);
+
+        await NotificationService.sendGeneralNotification(
+          employeeId,
+          'employee',
+          'Payment Alert',
+          `${formattedAmount} was added on ${formattedDate}${note ? ` – ${note}` : ''}`,
+          {
+            type: 'employee_payment',
+            amount: parsedAmount.toString(),
+            paymentDate,
+            note: note || '',
+            paymentId: String(paymentId)
+          }
+        );
+      } catch (notifyError) {
+        console.warn('Payment notification failed:', notifyError.message);
+      }
+    })();
 
     res.status(201).json({
       success: true,

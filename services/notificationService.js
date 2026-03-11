@@ -165,7 +165,7 @@ class NotificationService {
   }
 
   // Store user's FCM token in database
-  static async storeUserToken(userId, token, userType = 'owner') {
+  static async storeUserToken(userId, token, userType = 'owner', businessId = null) {
     try {
       let query = '';
       let params = [];
@@ -180,7 +180,9 @@ class NotificationService {
           params = [token, userId];
           break;
         case 'customer':
-          query = 'UPDATE customers SET fcm_token = ? WHERE id = ?';
+          // For customers, always store token for all businesses where this customer exists
+          // This ensures they receive notifications from all associated businesses
+          query = 'UPDATE customers SET fcm_token = ? WHERE customer_mobile = (SELECT customer_mobile FROM customers WHERE id = ? LIMIT 1)';
           params = [token, userId];
           break;
         default:
@@ -232,26 +234,50 @@ class NotificationService {
   // Send payment reminder notification
   static async sendPaymentReminder(customerId) {
     try {
-      const tokenResult = await this.getUserToken(customerId, 'customer');
-      if (!tokenResult.success) {
-        return tokenResult;
+      // For customers, we need to send notifications to all businesses where they exist
+      // First, get all customer records with the same mobile number
+      const [customerRecords] = await db.execute(
+        'SELECT id, customer_mobile, business_id, fcm_token FROM customers WHERE customer_mobile = (SELECT customer_mobile FROM customers WHERE id = ? LIMIT 1) AND is_active = TRUE AND fcm_token IS NOT NULL',
+        [customerId]
+      );
+      
+      if (customerRecords.length === 0) {
+        return { success: false, error: 'Customer FCM tokens not found' };
       }
-
-      const message = {
-        notification: {
-          title: 'Payment Reminder',
-          body: 'You have pending payments. Please check your account.',
-        },
-        data: {
-          type: 'payment_reminder',
-          customerId: customerId.toString(),
-        },
-        token: tokenResult.token,
+      
+      // Send notification to each business where customer exists
+      const results = [];
+      for (const customer of customerRecords) {
+        if (customer.fcm_token) {
+          const message = {
+            notification: {
+              title: 'Payment Reminder',
+              body: 'You have pending payments. Please check your account.',
+            },
+            data: {
+              type: 'payment_reminder',
+              customerId: customer.id.toString(),
+              businessId: customer.business_id.toString(),
+            },
+            token: customer.fcm_token,
+          };
+          
+          try {
+            const response = await admin.messaging().send(message);
+            console.log(`Payment reminder sent to business ${customer.business_id}:`, response);
+            results.push({ businessId: customer.business_id, success: true, messageId: response });
+          } catch (sendError) {
+            console.error(`Failed to send payment reminder to business ${customer.business_id}:`, sendError);
+            results.push({ businessId: customer.business_id, success: false, error: sendError.message });
+          }
+        }
+      }
+      
+      return { 
+        success: results.some(r => r.success), 
+        results: results,
+        message: 'Payment reminders sent to all businesses'
       };
-
-      const response = await admin.messaging().send(message);
-      console.log('Payment reminder sent:', response);
-      return { success: true, messageId: response };
     } catch (error) {
       console.error('Error sending payment reminder:', error);
       return { success: false, error: error.message };
@@ -284,6 +310,410 @@ class NotificationService {
       return { success: true, messageId: response };
     } catch (error) {
       console.error('Error sending general notification:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Send test notification
+  static async sendTestNotification(userId, userType, title, body) {
+    try {
+      const tokenResult = await this.getUserToken(userId, userType);
+      if (!tokenResult.success) {
+        return tokenResult;
+      }
+
+      const message = {
+        notification: {
+          title: title || 'Test Notification',
+          body: body || 'This is a test notification from Managio',
+        },
+        data: {
+          type: 'test_notification',
+          userId: userId.toString(),
+          userType: userType,
+          timestamp: new Date().toISOString(),
+        },
+        token: tokenResult.token,
+        android: {
+          notification: {
+            title: title || 'Test Notification',
+            body: body || 'This is a test notification from Managio',
+            icon: '@mipmap/ic_launcher',
+            color: '#4285f4',
+            channelId: 'default_channel',
+            sound: 'default',
+            visibility: 'public',
+            priority: 'high',
+          },
+          data: {
+            type: 'test_notification',
+            userId: userId.toString(),
+            userType: userType,
+            timestamp: new Date().toISOString(),
+          },
+        },
+        apns: {
+          payload: {
+            aps: {
+              alert: {
+                title: title || 'Test Notification',
+                body: body || 'This is a test notification from Managio',
+              },
+              sound: 'default',
+              'content-available': 1,
+            },
+          },
+        },
+      };
+
+      const response = await admin.messaging().send(message);
+      console.log('Test notification sent:', response);
+      return { 
+        success: true, 
+        messageId: response,
+        message: 'Test notification sent successfully'
+      };
+    } catch (error) {
+      console.error('Error sending test notification:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Send attendance update notification to employee
+  static async sendAttendanceUpdateNotification(employeeId, status, date, time) {
+    try {
+      const tokenResult = await this.getUserToken(employeeId, 'employee');
+      if (!tokenResult.success) {
+        return tokenResult;
+      }
+
+      const message = {
+        notification: {
+          title: 'Attendance Updated',
+          body: `Your attendance has been updated to ${status} for ${date} at ${time}`,
+        },
+        data: {
+          type: 'attendance_update',
+          employeeId: employeeId.toString(),
+          status: status,
+          date: date,
+          time: time,
+          timestamp: new Date().toISOString(),
+        },
+        token: tokenResult.token,
+        android: {
+          notification: {
+            title: 'Attendance Updated',
+            body: `Your attendance has been updated to ${status} for ${date} at ${time}`,
+            icon: '@mipmap/ic_launcher',
+            color: '#4285f4',
+            channelId: 'default_channel',
+            sound: 'default',
+            visibility: 'public',
+            priority: 'high',
+          },
+          data: {
+            type: 'attendance_update',
+            employeeId: employeeId.toString(),
+            status: status,
+            date: date,
+            time: time,
+            timestamp: new Date().toISOString(),
+          },
+        },
+        apns: {
+          payload: {
+            aps: {
+              alert: {
+                title: 'Attendance Updated',
+                body: `Your attendance has been updated to ${status} for ${date} at ${time}`,
+              },
+              sound: 'default',
+              'content-available': 1,
+            },
+          },
+        },
+      };
+
+      const response = await admin.messaging().send(message);
+      console.log('Attendance update notification sent:', response);
+      return { 
+        success: true, 
+        messageId: response,
+        message: 'Attendance update notification sent successfully'
+      };
+    } catch (error) {
+      console.error('Error sending attendance update notification:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Send attendance mark notification to employee
+  static async sendAttendanceMarkNotification(employeeId, status, date, time) {
+    try {
+      const tokenResult = await this.getUserToken(employeeId, 'employee');
+      if (!tokenResult.success) {
+        return tokenResult;
+      }
+
+      const message = {
+        notification: {
+          title: 'Attendance Marked',
+          body: `Your attendance has been marked as ${status} for ${date} at ${time}`,
+        },
+        data: {
+          type: 'attendance_mark',
+          employeeId: employeeId.toString(),
+          status: status,
+          date: date,
+          time: time,
+          timestamp: new Date().toISOString(),
+        },
+        token: tokenResult.token,
+        android: {
+          notification: {
+            title: 'Attendance Marked',
+            body: `Your attendance has been marked as ${status} for ${date} at ${time}`,
+            icon: '@mipmap/ic_launcher',
+            color: '#4285f4',
+            channelId: 'default_channel',
+            sound: 'default',
+            visibility: 'public',
+            priority: 'high',
+          },
+          data: {
+            type: 'attendance_mark',
+            employeeId: employeeId.toString(),
+            status: status,
+            date: date,
+            time: time,
+            timestamp: new Date().toISOString(),
+          },
+        },
+        apns: {
+          payload: {
+            aps: {
+              alert: {
+                title: 'Attendance Marked',
+                body: `Your attendance has been marked as ${status} for ${date} at ${time}`,
+              },
+              sound: 'default',
+              'content-available': 1,
+            },
+          },
+        },
+      };
+
+      const response = await admin.messaging().send(message);
+      console.log('Attendance mark notification sent:', response);
+      return { 
+        success: true, 
+        messageId: response,
+        message: 'Attendance mark notification sent successfully'
+      };
+    } catch (error) {
+      console.error('Error sending attendance mark notification:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Send attendance notification to owner (when employee marks attendance)
+  static async sendEmployeeAttendanceNotification(ownerId, employeeName, status, date, time) {
+    try {
+      const tokenResult = await this.getUserToken(ownerId, 'owner');
+      if (!tokenResult.success) {
+        return tokenResult;
+      }
+
+      const message = {
+        notification: {
+          title: 'Employee Attendance',
+          body: `${employeeName} marked attendance as ${status} on ${date} at ${time}`,
+        },
+        data: {
+          type: 'employee_attendance',
+          ownerId: ownerId.toString(),
+          employeeName: employeeName,
+          status: status,
+          date: date,
+          time: time,
+          timestamp: new Date().toISOString(),
+        },
+        token: tokenResult.token,
+        android: {
+          notification: {
+            title: 'Employee Attendance',
+            body: `${employeeName} marked attendance as ${status} on ${date} at ${time}`,
+            icon: '@mipmap/ic_launcher',
+            color: '#4285f4',
+            channelId: 'default_channel',
+            sound: 'default',
+            visibility: 'public',
+            priority: 'high',
+          },
+          data: {
+            type: 'employee_attendance',
+            ownerId: ownerId.toString(),
+            employeeName: employeeName,
+            status: status,
+            date: date,
+            time: time,
+            timestamp: new Date().toISOString(),
+          },
+        },
+        apns: {
+          payload: {
+            aps: {
+              alert: {
+                title: 'Employee Attendance',
+                body: `${employeeName} marked attendance as ${status} on ${date} at ${time}`,
+              },
+              sound: 'default',
+              'content-available': 1,
+            },
+          },
+        },
+      };
+
+      const response = await admin.messaging().send(message);
+      console.log('Employee attendance notification sent to owner:', response);
+      return { 
+        success: true, 
+        messageId: response,
+        message: 'Employee attendance notification sent to owner successfully'
+      };
+    } catch (error) {
+      console.error('Error sending employee attendance notification:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Send holiday notification to all employees of a business
+  static async sendHolidayNotification(businessId, holidayDate, description) {
+    try {
+      // Get all active employees for the business
+      const [employees] = await db.execute(
+        'SELECT id, fcm_token FROM employees WHERE owner_id = (SELECT owner_id FROM businesses WHERE id = ?) AND is_active = TRUE AND fcm_token IS NOT NULL',
+        [businessId]
+      );
+      
+      if (employees.length === 0) {
+        return { success: true, message: 'No employees found with FCM tokens' };
+      }
+      
+      // Collect valid FCM tokens
+      const validTokens = employees
+        .filter(employee => employee.fcm_token)
+        .map(employee => employee.fcm_token);
+      
+      if (validTokens.length === 0) {
+        return { success: true, message: 'No employees have FCM tokens registered' };
+      }
+      
+      // Format the date for the notification
+      const formattedDate = new Date(holidayDate).toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      
+      const title = 'Holiday Notification';
+      const body = `There will be a holiday on ${formattedDate}. ${description || 'Enjoy your day off!'}`;
+      
+      const message = {
+        notification: {
+          title: title,
+          body: body,
+        },
+        data: {
+          type: 'holiday_notification',
+          businessId: businessId.toString(),
+          holidayDate: holidayDate,
+          description: description || 'Holiday',
+          timestamp: new Date().toISOString(),
+        },
+        tokens: validTokens,
+      };
+      
+      // For sending to multiple tokens, we need to use sendEachForMulticast instead of sendMulticast
+      // or send individual notifications if sendMulticast is not available
+            
+      // Prepare individual messages for each token
+      const messages = validTokens.map(token => ({
+        notification: {
+          title: message.notification.title,
+          body: message.notification.body,
+        },
+        data: message.data,
+        token: token,
+      }));
+            
+      // Send notifications individually
+      const responses = await Promise.allSettled(
+        messages.map(msg => admin.messaging().send(msg))
+      );
+            
+      let successCount = 0;
+      let failureCount = 0;
+      const failedTokens = [];
+            
+      // Process results
+      for (let i = 0; i < responses.length; i++) {
+        const response = responses[i];
+        if (response.status === 'fulfilled') {
+          successCount++;
+        } else {
+          failureCount++;
+          const token = validTokens[i];
+          const error = response.reason;
+          failedTokens.push({
+            token: token,
+            error: error.message || error.toString()
+          });
+                
+          // If the error indicates an invalid token, remove it from the database
+          if (error.code === 'messaging/invalid-registration-token' || 
+              error.code === 'messaging/registration-token-not-registered') {
+            try {
+              // Find the employee with this token and remove it
+              const [employeeWithToken] = await db.execute(
+                'SELECT id FROM employees WHERE fcm_token = ?',
+                [token]
+              );
+              if (employeeWithToken.length > 0) {
+                await db.execute(
+                  'UPDATE employees SET fcm_token = NULL WHERE id = ?',
+                  [employeeWithToken[0].id]
+                );
+                console.log('Removed invalid FCM token from employee:', employeeWithToken[0].id);
+              }
+            } catch (dbError) {
+              console.error('Error removing invalid token from database:', dbError);
+            }
+          }
+        }
+      }
+            
+      console.log(`Holiday notification sent - Success: ${successCount}, Failures: ${failureCount}`);
+            
+      if (failureCount > 0) {
+        return { 
+          success: successCount > 0, 
+          successCount: successCount,
+          failureCount: failureCount,
+          message: `Holiday notification sent to ${successCount} employees, ${failureCount} failed`,
+          failedTokens: failedTokens
+        };
+      }
+            
+      return { 
+        success: true, 
+        successCount: successCount,
+        message: `Holiday notification sent successfully to ${successCount} employees`
+      };
+    } catch (error) {
+      console.error('Error sending holiday notification:', error);
       return { success: false, error: error.message };
     }
   }

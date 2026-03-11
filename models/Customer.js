@@ -4,6 +4,7 @@ class Customer {
   constructor(data) {
     this.id = data.id;
     this.business_id = data.business_id;
+    this.business_customer_id = data.business_customer_id;
     this.customer_name = data.customer_name;
     this.customer_mobile = data.customer_mobile;
     this.customer_email = data.customer_email;
@@ -17,35 +18,39 @@ class Customer {
 
   // Create a new customer
   static async create(customerData) {
+    const db = require('../config/db');
+      
     try {
       const {
         business_id,
+        business_customer_id,
         customer_name,
         customer_mobile,
         customer_email,
         customer_address
       } = customerData;
-
+  
       const [result] = await db.execute(
         `INSERT INTO customers (
-          business_id, customer_name, customer_mobile, customer_email, 
+          business_id, business_customer_id, customer_name, customer_mobile, customer_email, 
           customer_address
-        ) VALUES (?, ?, ?, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?)`,
         [
           business_id,
+          business_customer_id,
           customer_name,
           customer_mobile,
           customer_email,
           customer_address
         ]
       );
-
+  
       // Return the created customer
       const [rows] = await db.execute(
         'SELECT * FROM customers WHERE id = ?',
         [result.insertId]
       );
-
+  
       return rows.length > 0 ? new Customer(rows[0]) : null;
     } catch (error) {
       console.error('Error creating customer:', error);
@@ -189,6 +194,21 @@ class Customer {
       return rows[0].count;
     } catch (error) {
       console.error('Error getting customer count by business ID:', error);
+      throw error;
+    }
+  }
+
+  // Get the next business_customer_id for a business
+  static async getNextBusinessCustomerId(business_id) {
+    try {
+      const [rows] = await db.execute(
+        'SELECT MAX(business_customer_id) as max_id FROM customers WHERE business_id = ? AND is_active = TRUE',
+        [business_id]
+      );
+
+      return (rows[0].max_id || 0) + 1;
+    } catch (error) {
+      console.error('Error getting next business customer ID:', error);
       throw error;
     }
   }

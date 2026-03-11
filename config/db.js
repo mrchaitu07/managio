@@ -7,7 +7,7 @@ const pool = mysql.createPool({
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'managio_db',
   waitForConnections: true,
-  connectionLimit: 5, // Reduced from 10 to 5 to match MySQL user limit
+  connectionLimit: 10, // Reduced from 10 to 5 to match MySQL user limit
   queueLimit: 0,
   acquireTimeout: 60000,
   timeout: 60000,

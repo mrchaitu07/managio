@@ -87,9 +87,13 @@ router.post('/', auth, async (req, res) => {
       }
     }
 
+    // Get the next business_customer_id for this business
+    const business_customer_id = await Customer.getNextBusinessCustomerId(business_id);
+    
     // Create the customer
     const customerData = {
       business_id,
+      business_customer_id,
       customer_name,
       customer_mobile,
       customer_email,

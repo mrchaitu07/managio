@@ -131,6 +131,7 @@ CREATE TABLE IF NOT EXISTS employee_attendance (
 CREATE TABLE IF NOT EXISTS customers (
     id INT AUTO_INCREMENT PRIMARY KEY,
     business_id INT NOT NULL,
+    business_customer_id INT NOT NULL,
     customer_name VARCHAR(100) NOT NULL,
     customer_mobile VARCHAR(15),
     customer_email VARCHAR(100),
@@ -143,6 +144,7 @@ CREATE TABLE IF NOT EXISTS customers (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE,
     INDEX idx_business (business_id),
+    INDEX idx_business_customer_id (business_id, business_customer_id),
     INDEX idx_customer_name (customer_name),
     INDEX idx_customer_mobile (customer_mobile),
     INDEX idx_customer_email (customer_email)

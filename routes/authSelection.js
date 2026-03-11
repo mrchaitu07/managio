@@ -640,7 +640,7 @@ router.post('/verify-otp', async (req, res) => {
 // Store FCM token for user
 router.post('/store-token', async (req, res) => {
   try {
-    const { userId, token, userType } = req.body;
+    const { userId, token, userType, businessId } = req.body;
     
     if (!userId || !token || !userType) {
       return res.status(400).json({
@@ -649,7 +649,7 @@ router.post('/store-token', async (req, res) => {
       });
     }
     
-    const result = await NotificationService.storeUserToken(userId, token, userType);
+    const result = await NotificationService.storeUserToken(userId, token, userType, businessId);
     
     if (result.success) {
       res.json({
@@ -684,13 +684,20 @@ router.post('/send-test-notification', async (req, res) => {
       });
     }
     
-    const result = await NotificationService.sendGeneralNotification(userId, userType, title, body);
+    let result;
+    if (userType === 'customer') {
+      // For customers, send notification to all businesses
+      result = await NotificationService.sendPaymentReminder(userId);
+    } else {
+      // For owners and employees, send single notification
+      result = await NotificationService.sendTestNotification(userId, userType, title, body);
+    }
     
     if (result.success) {
       res.json({
         success: true,
-        message: 'Notification sent successfully',
-        messageId: result.messageId
+        message: result.message || 'Test notification sent successfully',
+        details: result
       });
     } else {
       res.status(400).json({
@@ -699,10 +706,10 @@ router.post('/send-test-notification', async (req, res) => {
       });
     }
   } catch (error) {
-    console.error('Error sending notification:', error);
+    console.error('Error sending test notification:', error);
     res.status(500).json({
       success: false,
-      message: 'Error sending notification',
+      message: 'Error sending test notification',
       error: error.message
     });
   }
