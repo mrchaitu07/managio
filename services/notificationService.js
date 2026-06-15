@@ -182,8 +182,21 @@ class NotificationService {
         case 'customer':
           // For customers, always store token for all businesses where this customer exists
           // This ensures they receive notifications from all associated businesses
-          query = 'UPDATE customers SET fcm_token = ? WHERE customer_mobile = (SELECT customer_mobile FROM customers WHERE id = ? LIMIT 1)';
-          params = [token, userId];
+          // First get the customer mobile number
+          const [customerData] = await db.execute(
+            'SELECT customer_mobile FROM customers WHERE id = ? LIMIT 1',
+            [userId]
+          );
+          
+          if (customerData.length === 0) {
+            return { success: false, error: 'Customer not found' };
+          }
+          
+          const customerMobile = customerData[0].customer_mobile;
+          
+          // Update all customers with the same mobile number
+          query = 'UPDATE customers SET fcm_token = ? WHERE customer_mobile = ?';
+          params = [token, customerMobile];
           break;
         default:
           return { success: false, error: 'Invalid user type' };

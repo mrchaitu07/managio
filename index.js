@@ -20,6 +20,8 @@ if (!fs.existsSync(uploadsDir)) {
 app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static('uploads'));
+app.use('/web-onboarding', express.static(path.join(__dirname, '../web-onboarding')));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Test DB Connection
 db.getConnection()
@@ -34,7 +36,7 @@ db.getConnection()
 
 // Routes
 app.get('/', (req, res) => {
-  res.json({ message: 'Welcome to the Managio API' });
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Auth routes
@@ -87,6 +89,11 @@ app.use('/api/customer-notifications', require('./routes/customerNotifications')
 
 // Businesses routes
 app.use('/api/businesses', require('./routes/businesses'));
+
+// Razorpay Payment routes
+// IMPORTANT: Webhook route needs express.raw() before json() parsing for signature verification
+app.use('/api/razorpay/webhook', express.raw({ type: 'application/json' }));
+app.use('/api/razorpay', require('./routes/razorpay'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

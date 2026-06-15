@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MindDreams | Building Software That Powers Businesses</title>
+    <meta name="description" content="MindDreams builds innovative SaaS solutions and mobile applications that simplify business operations. Creator of Managio - the complete business management platform.">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0f1e;
+            --bg-card: rgba(255,255,255,0.04);
+            --text: #f1f5f9;
+            --muted: #94a3b8;
+            --primary: #8b5cf6;
+            --secondary: #3b82f6;
+            --accent: #06b6d4;
+            --grad: linear-gradient(135deg, var(--primary), var(--secondary));
+            --radius: 20px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        a { color: inherit; text-decoration: none; }
+
+        /* ── NAV ──────────────────────────────────────────────── */
+        nav {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 18px 6%; transition: .3s;
+        }
+        nav.scrolled {
+            background: rgba(10,15,30,0.92);
+            backdrop-filter: blur(16px);
+            box-shadow: 0 2px 30px rgba(0,0,0,.4);
+        }
+        .nav-logo {
+            font-size: 26px; font-weight: 800;
+            background: var(--grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .nav-links { display: flex; gap: 32px; list-style: none; }
+        .nav-links a { color: var(--muted); font-weight: 500; font-size: 15px; transition: .2s; }
+        .nav-links a:hover { color: var(--text); }
+        .nav-cta {
+            padding: 10px 24px; border-radius: 50px; border: none; cursor: pointer;
+            background: var(--grad); color: #fff; font-weight: 600; font-size: 14px;
+            font-family: inherit; transition: .3s;
+        }
+        .nav-cta:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(139,92,246,.4); }
+        .hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; background: none; border: none; }
+        .hamburger span { width: 24px; height: 2px; background: var(--text); transition: .3s; }
+
+        /* ── HERO ─────────────────────────────────────────────── */
+        .hero {
+            min-height: 100vh; display: flex; align-items: center; justify-content: center;
+            padding: 120px 6% 80px; position: relative; text-align: center;
+        }
+        .hero-bg {
+            position: absolute; inset: 0; overflow: hidden; z-index: 0;
+        }
+        .hero-bg .orb {
+            position: absolute; border-radius: 50%; filter: blur(80px); opacity: .35;
+        }
+        .hero-bg .orb-1 { width: 500px; height: 500px; background: var(--primary); top: -10%; left: -5%; animation: drift 18s ease-in-out infinite alternate; }
+        .hero-bg .orb-2 { width: 400px; height: 400px; background: var(--secondary); bottom: -5%; right: -5%; animation: drift 22s ease-in-out infinite alternate-reverse; }
+        .hero-bg .orb-3 { width: 300px; height: 300px; background: var(--accent); top: 40%; left: 50%; animation: drift 15s ease-in-out infinite alternate; }
+
+        @keyframes drift {
+            from { transform: translate(0, 0) scale(1); }
+            to { transform: translate(60px, 40px) scale(1.1); }
+        }
+
+        .hero-content { position: relative; z-index: 1; max-width: 800px; }
+        .hero-badge {
+            display: inline-block; padding: 8px 20px; border-radius: 50px; font-size: 13px;
+            font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
+            background: rgba(139,92,246,.15); border: 1px solid rgba(139,92,246,.3); color: var(--primary);
+            margin-bottom: 24px;
+        }
+        .hero h1 {
+            font-size: clamp(36px, 6vw, 72px); font-weight: 800; line-height: 1.1; margin-bottom: 24px;
+        }
+        .hero h1 .grad {
+            background: var(--grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .hero p { font-size: 18px; color: var(--muted); max-width: 600px; margin: 0 auto 40px; }
+        .hero-buttons { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+        .btn-primary {
+            padding: 16px 36px; border-radius: 50px; border: none; cursor: pointer;
+            background: var(--grad); color: #fff; font-weight: 700; font-size: 16px;
+            font-family: inherit; transition: .3s;
+            box-shadow: 0 8px 30px rgba(139,92,246,.35);
+        }
+        .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 12px 40px rgba(139,92,246,.5); }
+        .btn-outline {
+            padding: 16px 36px; border-radius: 50px; cursor: pointer;
+            background: transparent; color: var(--text); font-weight: 600; font-size: 16px;
+            font-family: inherit; border: 1px solid rgba(255,255,255,.15); transition: .3s;
+        }
+        .btn-outline:hover { border-color: var(--primary); background: rgba(139,92,246,.08); }
+
+        .hero-stats {
+            display: flex; justify-content: center; gap: 48px; margin-top: 60px;
+            padding-top: 40px; border-top: 1px solid rgba(255,255,255,.08);
+        }
+        .stat-num { font-size: 36px; font-weight: 800; background: var(--grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .stat-label { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+
+        /* ── SECTIONS ─────────────────────────────────────────── */
+        section { padding: 100px 6%; }
+        .section-tag {
+            display: inline-block; padding: 6px 16px; border-radius: 50px; font-size: 12px;
+            font-weight: 600; letter-spacing: 2px; text-transform: uppercase;
+            background: rgba(139,92,246,.12); border: 1px solid rgba(139,92,246,.25); color: var(--primary);
+            margin-bottom: 16px;
+        }
+        .section-title { font-size: clamp(28px, 4vw, 44px); font-weight: 800; margin-bottom: 16px; }
+        .section-sub { font-size: 17px; color: var(--muted); max-width: 600px; }
+        .section-header { text-align: center; margin-bottom: 60px; }
+        .section-header .section-sub { margin: 0 auto; }
+
+        /* ── SERVICES ──────────────────────────────────────────── */
+        .services-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px;
+            max-width: 1100px; margin: 0 auto;
+        }
+        .service-card {
+            background: var(--bg-card); border: 1px solid rgba(255,255,255,.07);
+            border-radius: var(--radius); padding: 36px 28px; transition: .4s;
+            position: relative; overflow: hidden;
+        }
+        .service-card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+            background: var(--grad); opacity: 0; transition: .4s;
+        }
+        .service-card:hover { transform: translateY(-6px); border-color: rgba(139,92,246,.3); }
+        .service-card:hover::before { opacity: 1; }
+        .service-icon { font-size: 40px; margin-bottom: 20px; }
+        .service-card h3 { font-size: 20px; font-weight: 700; margin-bottom: 10px; }
+        .service-card p { color: var(--muted); font-size: 14px; line-height: 1.7; }
+
+        /* ── PRODUCT ──────────────────────────────────────────── */
+        #product { background: rgba(139,92,246,.03); }
+        .product-wrap {
+            max-width: 1100px; margin: 0 auto;
+            display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center;
+        }
+        .product-info .section-tag { margin-bottom: 12px; }
+        .product-info h2 { font-size: clamp(28px, 4vw, 42px); font-weight: 800; margin-bottom: 20px; }
+        .product-info p { color: var(--muted); font-size: 16px; line-height: 1.8; margin-bottom: 30px; }
+        .product-features { list-style: none; display: grid; gap: 14px; margin-bottom: 36px; }
+        .product-features li {
+            display: flex; align-items: center; gap: 12px; font-size: 15px; color: var(--muted);
+        }
+        .product-features .check {
+            width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center;
+            justify-content: center; background: rgba(16,185,129,.15); color: #10b981; font-size: 13px; flex-shrink: 0;
+        }
+        /* Phone Frame */
+        .phone-frame {
+            width: 280px; margin: 0 auto; background: #f5f5fa; border-radius: 32px;
+            padding: 12px; box-shadow: 0 20px 60px rgba(0,0,0,.5), inset 0 0 0 2px rgba(255,255,255,.1);
+            position: relative;
+        }
+        .phone-notch {
+            width: 80px; height: 6px; background: #1a1a2e; border-radius: 3px;
+            margin: 0 auto 8px;
+        }
+        .phone-screen {
+            background: #f5f5fa; border-radius: 22px; overflow: hidden;
+            max-height: 480px; overflow-y: auto; scrollbar-width: none;
+        }
+        .phone-screen::-webkit-scrollbar { display: none; }
+        .phone-tabs {
+            display: flex; gap: 6px; padding: 8px 10px; background: rgba(255,255,255,.05);
+            border-radius: 22px 22px 0 0; justify-content: center;
+        }
+        .phone-tab {
+            padding: 5px 12px; border-radius: 20px; font-size: 10px; font-weight: 600;
+            border: none; cursor: pointer; font-family: inherit; transition: .2s;
+            background: rgba(255,255,255,.05); color: var(--muted);
+        }
+        .phone-tab.active { background: var(--grad); color: #fff; }
+
+        /* Dashboard Screen */
+        .dash-screen { display: none; padding: 12px; }
+        .dash-screen.active { display: block; }
+        .dash-greeting { font-size: 10px; color: #94a3b8; margin-bottom: 2px; }
+        .dash-name { font-size: 15px; font-weight: 700; color: #1e293b; margin-bottom: 10px; }
+        .dash-date {
+            display: inline-flex; align-items: center; gap: 4px; font-size: 9px; color: #64748b;
+            background: #fff; padding: 3px 10px; border-radius: 20px; margin-bottom: 12px;
+        }
+        .dash-avatar {
+            width: 32px; height: 32px; border-radius: 50%; float: right;
+            background: linear-gradient(135deg, #8b5cf6, #3b82f6); display: flex;
+            align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff;
+        }
+
+        /* Metric Cards */
+        .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+        .metric-card {
+            border-radius: 14px; padding: 10px; position: relative;
+        }
+        .metric-card .mc-icon { font-size: 18px; margin-bottom: 6px; }
+        .metric-card .mc-val { font-size: 22px; font-weight: 800; color: #1e293b; }
+        .metric-card .mc-lbl { font-size: 9px; color: #64748b; }
+        .metric-card .mc-trend {
+            display: inline-block; font-size: 8px; font-weight: 600; padding: 2px 6px;
+            border-radius: 10px; margin-top: 4px;
+        }
+        .mc-purple { background: #ede9fe; }
+        .mc-green { background: #d1fae5; }
+        .mc-peach { background: #ffedd5; }
+        .mc-pink { background: #fce7f3; }
+        .trend-green { background: #d1fae5; color: #059669; }
+        .trend-yellow { background: #fef3c7; color: #d97706; }
+
+        /* Attendance Card */
+        .att-card {
+            background: linear-gradient(135deg, #059669, #10b981); border-radius: 14px;
+            padding: 14px; margin-bottom: 14px; color: #fff;
+        }
+        .att-card h4 { font-size: 12px; font-weight: 700; margin-bottom: 2px; }
+        .att-card .att-date { font-size: 9px; opacity: .8; margin-bottom: 10px; }
+        .att-card .att-status { font-size: 10px; margin-bottom: 8px; }
+        .att-card .att-btn {
+            display: inline-block; background: #fff; color: #059669; font-size: 9px;
+            font-weight: 700; padding: 5px 14px; border-radius: 20px;
+        }
+
+        /* Attendance List */
+        .att-section-title { font-size: 12px; font-weight: 700; color: #1e293b; margin-bottom: 8px; }
+        .att-item {
+            display: flex; align-items: center; gap: 8px; background: #fff;
+            border-radius: 10px; padding: 8px 10px; margin-bottom: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,.05);
+        }
+        .att-item-avatar {
+            width: 28px; height: 28px; border-radius: 50%; display: flex;
+            align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff;
+            flex-shrink: 0;
+        }
+        .att-item-info { flex: 1; }
+        .att-item-name { font-size: 10px; font-weight: 600; color: #1e293b; }
+        .att-item-date { font-size: 8px; color: #94a3b8; }
+        .att-badge {
+            font-size: 8px; font-weight: 600; padding: 2px 8px; border-radius: 10px;
+        }
+        .badge-absent { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+        .badge-present { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+
+        /* Profile Cards */
+        .profile-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+        .profile-card {
+            border-radius: 14px; padding: 12px; text-align: center;
+        }
+        .profile-card .pc-icon { font-size: 20px; margin-bottom: 6px; }
+        .profile-card .pc-label { font-size: 8px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; }
+        .profile-card .pc-val { font-size: 13px; font-weight: 700; color: #1e293b; margin-top: 2px; }
+        .pc-lavender { background: #ede9fe; }
+        .pc-mint { background: #d1fae5; }
+
+        /* Quick Actions */
+        .qa-title { font-size: 12px; font-weight: 700; color: #1e293b; margin-bottom: 2px; }
+        .qa-sub { font-size: 9px; color: #94a3b8; margin-bottom: 8px; }
+        .qa-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .qa-tile {
+            border-radius: 14px; padding: 14px 10px; text-align: center;
+        }
+        .qa-tile .qa-icon { font-size: 22px; margin-bottom: 6px; }
+        .qa-tile .qa-label { font-size: 10px; font-weight: 600; color: #1e293b; }
+        .qa-lavender { background: #ede9fe; }
+        .qa-peach { background: #ffedd5; }
+
+        /* Employee Cards */
+        .emp-card {
+            background: #fff; border-radius: 14px; padding: 12px; margin-bottom: 8px;
+            box-shadow: 0 1px 4px rgba(0,0,0,.06);
+        }
+        .emp-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+        .emp-avatar {
+            width: 32px; height: 32px; border-radius: 50%; display: flex;
+            align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff;
+            background: linear-gradient(135deg, #8b5cf6, #3b82f6); flex-shrink: 0;
+        }
+        .emp-info { flex: 1; }
+        .emp-name { font-size: 11px; font-weight: 700; color: #1e293b; }
+        .emp-role { font-size: 8px; color: #94a3b8; }
+        .emp-details { font-size: 8px; color: #64748b; line-height: 1.6; }
+        .emp-btn {
+            display: block; text-align: center; background: linear-gradient(135deg, #059669, #10b981);
+            color: #fff; font-size: 9px; font-weight: 600; padding: 6px; border-radius: 8px;
+            margin-top: 8px;
+        }
+
+        /* Calendar Mini */
+        .cal-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .cal-month { font-size: 12px; font-weight: 700; color: #1e293b; }
+        .cal-nav {
+            width: 22px; height: 22px; border-radius: 50%; background: #fff; border: none;
+            display: flex; align-items: center; justify-content: center; font-size: 10px;
+            cursor: pointer; color: #1e293b;
+        }
+        .cal-grid {
+            display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px;
+            text-align: center; font-size: 8px; margin-bottom: 10px;
+        }
+        .cal-day-hdr { color: #94a3b8; font-weight: 600; padding: 4px 0; }
+        .cal-day {
+            padding: 4px 2px; border-radius: 6px; position: relative; color: #475569;
+        }
+        .cal-day .dot {
+            width: 4px; height: 4px; border-radius: 50%; margin: 2px auto 0;
+        }
+        .dot-red { background: #ef4444; }
+        .dot-green { background: #10b981; }
+        .dot-gray { background: #94a3b8; }
+        .cal-selected { background: #ede9fe; color: #6d28d9; font-weight: 700; }
+        .cal-summary { display: flex; flex-wrap: wrap; gap: 4px; }
+        .cal-stat {
+            flex: 1; min-width: 60px; background: #fff; border-radius: 8px; padding: 6px;
+            text-align: center; box-shadow: 0 1px 2px rgba(0,0,0,.04);
+        }
+        .cal-stat .cs-num { font-size: 14px; font-weight: 800; color: #1e293b; }
+        .cal-stat .cs-lbl { font-size: 7px; color: #94a3b8; text-transform: uppercase; letter-spacing: .5px; }
+
+        /* ── PROCESS ──────────────────────────────────────────── */
+        .process-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 30px;
+            max-width: 1000px; margin: 0 auto;
+        }
+        .process-step { text-align: center; position: relative; }
+        .process-num {
+            width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center;
+            justify-content: center; font-size: 22px; font-weight: 800; margin: 0 auto 20px;
+            background: var(--grad); color: #fff;
+        }
+        .process-step h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+        .process-step p { color: var(--muted); font-size: 14px; }
+
+        /* ── TECH ─────────────────────────────────────────────── */
+        .tech-grid {
+            display: flex; flex-wrap: wrap; justify-content: center; gap: 16px;
+            max-width: 800px; margin: 0 auto;
+        }
+        .tech-tag {
+            padding: 10px 22px; border-radius: 50px; font-size: 14px; font-weight: 500;
+            background: var(--bg-card); border: 1px solid rgba(255,255,255,.08);
+            transition: .3s;
+        }
+        .tech-tag:hover { border-color: var(--primary); transform: translateY(-2px); }
+
+        /* ── CTA ──────────────────────────────────────────────── */
+        .cta-section {
+            text-align: center; padding: 80px 6%;
+            background: linear-gradient(135deg, rgba(139,92,246,.08), rgba(59,130,246,.08));
+            border-top: 1px solid rgba(255,255,255,.05);
+            border-bottom: 1px solid rgba(255,255,255,.05);
+        }
+        .cta-section h2 { font-size: clamp(28px, 4vw, 40px); font-weight: 800; margin-bottom: 16px; }
+        .cta-section p { color: var(--muted); font-size: 17px; max-width: 500px; margin: 0 auto 32px; }
+
+        /* ── FOOTER ───────────────────────────────────────────── */
+        footer {
+            padding: 60px 6% 30px; text-align: center;
+        }
+        .footer-logo {
+            font-size: 28px; font-weight: 800; margin-bottom: 12px;
+            background: var(--grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .footer-desc { color: var(--muted); font-size: 14px; max-width: 400px; margin: 0 auto 30px; }
+        .footer-links { display: flex; justify-content: center; gap: 28px; flex-wrap: wrap; margin-bottom: 30px; }
+        .footer-links a { color: var(--muted); font-size: 14px; transition: .2s; }
+        .footer-links a:hover { color: var(--text); }
+        .footer-divider { height: 1px; background: rgba(255,255,255,.06); margin-bottom: 24px; }
+        .footer-copy { color: rgba(255,255,255,.25); font-size: 13px; }
+
+        /* ── ANIMATIONS ───────────────────────────────────────── */
+        .reveal { opacity: 0; transform: translateY(30px); transition: .8s ease; }
+        .reveal.visible { opacity: 1; transform: translateY(0); }
+
+        /* ── RESPONSIVE ───────────────────────────────────────── */
+        @media (max-width: 768px) {
+            .nav-links { display: none; }
+            .nav-cta { display: none; }
+            .hamburger { display: flex; }
+            .nav-links.open {
+                display: flex; flex-direction: column; position: absolute;
+                top: 60px; left: 0; right: 0; background: rgba(10,15,30,.96);
+                padding: 24px; gap: 20px; backdrop-filter: blur(16px);
+            }
+            .hero-stats { gap: 24px; flex-wrap: wrap; }
+            .product-wrap { grid-template-columns: 1fr; }
+            .hero h1 { font-size: 32px; }
+            .hero-buttons { flex-direction: column; align-items: center; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- NAV -->
+    <nav id="navbar">
+        <div class="nav-logo">MindDreams</div>
+        <ul class="nav-links" id="navLinks">
+            <li><a href="#services">Services</a></li>
+            <li><a href="#product">Product</a></li>
+            <li><a href="#process">Process</a></li>
+            <li><a href="#tech">Technology</a></li>
+            <li><a href="#contact">Contact</a></li>
+        </ul>
+        <button class="nav-cta" onclick="document.getElementById('contact').scrollIntoView({behavior:'smooth'})">Get in Touch</button>
+        <button class="hamburger" id="hamburger" onclick="document.getElementById('navLinks').classList.toggle('open')">
+            <span></span><span></span><span></span>
+        </button>
+    </nav>
+
+    <!-- HERO -->
+    <section class="hero">
+        <div class="hero-bg">
+            <div class="orb orb-1"></div>
+            <div class="orb orb-2"></div>
+            <div class="orb orb-3"></div>
+        </div>
+        <div class="hero-content">
+            <div class="hero-badge">Software Company</div>
+            <h1>Building Software<br>That <span class="grad">Powers Businesses</span></h1>
+            <p>We design and develop innovative SaaS platforms and mobile applications that automate operations, boost productivity, and help businesses scale.</p>
+            <div class="hero-buttons">
+                <button class="btn-primary" onclick="document.getElementById('product').scrollIntoView({behavior:'smooth'})">Explore Managio</button>
+                <button class="btn-outline" onclick="document.getElementById('services').scrollIntoView({behavior:'smooth'})">Our Services</button>
+            </div>
+            <div class="hero-stats">
+                <div>
+                    <div class="stat-num">50+</div>
+                    <div class="stat-label">Projects Delivered</div>
+                </div>
+                <div>
+                    <div class="stat-num">10K+</div>
+                    <div class="stat-label">Users Served</div>
+                </div>
+                <div>
+                    <div class="stat-num">99.9%</div>
+                    <div class="stat-label">Uptime</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SERVICES -->
+    <section id="services">
+        <div class="section-header reveal">
+            <div class="section-tag">What We Do</div>
+            <h2 class="section-title">Services & Solutions</h2>
+            <p class="section-sub">End-to-end software development services tailored for modern businesses.</p>
+        </div>
+        <div class="services-grid">
+            <div class="service-card reveal">
+                <div class="service-icon">🚀</div>
+                <h3>SaaS Products</h3>
+                <p>Cloud-based platforms built for scale. From concept to launch, we create subscription software that solves real business problems.</p>
+            </div>
+            <div class="service-card reveal">
+                <div class="service-icon">📱</div>
+                <h3>Mobile Applications</h3>
+                <p>Native and cross-platform mobile apps for iOS and Android. Beautiful interfaces with powerful backend functionality.</p>
+            </div>
+            <div class="service-card reveal">
+                <div class="service-icon">🌐</div>
+                <h3>Web Platforms</h3>
+                <p>Responsive web applications and dashboards. Real-time data, seamless user experience, and enterprise-grade security.</p>
+            </div>
+            <div class="service-card reveal">
+                <div class="service-icon">⚡</div>
+                <h3>Business Automation</h3>
+                <p>Automate workflows, payments, and operations. Custom integrations that eliminate manual tasks and reduce costs.</p>
+            </div>
+            <div class="service-card reveal">
+                <div class="service-icon">🔒</div>
+                <h3>API Development</h3>
+                <p>Secure, scalable REST and GraphQL APIs. Third-party integrations with payment gateways, notifications, and analytics.</p>
+            </div>
+            <div class="service-card reveal">
+                <div class="service-icon">☁️</div>
+                <h3>Cloud Infrastructure</h3>
+                <p>AWS deployment, server management, and DevOps. Auto-scaling architecture with monitoring and 99.9% uptime guarantee.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- PRODUCT -->
+    <section id="product">
+        <div class="product-wrap">
+            <div class="product-info reveal">
+                <div class="section-tag">Featured Product</div>
+                <h2>Managio</h2>
+                <p>The complete business management platform designed for small and medium businesses. Manage your entire operation from one app.</p>
+                <ul class="product-features">
+                    <li><span class="check">✓</span> Employee Management & Onboarding</li>
+                    <li><span class="check">✓</span> QR & GPS-based Attendance Tracking</li>
+                    <li><span class="check">✓</span> Salary, Payment & Invoice Management</li>
+                    <li><span class="check">✓</span> Customer CRM & Sales Tracking</li>
+                    <li><span class="check">✓</span> Leave Requests & Holiday Management</li>
+                    <li><span class="check">✓</span> Real-time Push Notifications</li>
+                    <li><span class="check">✓</span> Analytics Dashboard & Reports</li>
+                </ul>
+                <button class="btn-primary" disabled style="opacity:.7; cursor:default;">Launching Soon on Play Store</button>
+            </div>
+            <div class="product-visual reveal" style="background:transparent; border:none; padding:0; display:flex; align-items:center; justify-content:center;">
+                <div class="phone-frame">
+                    <div class="phone-notch"></div>
+                    <div class="phone-screen">
+                        <div class="phone-tabs">
+                            <button class="phone-tab active" onclick="switchTab(this,'tab-dash')">Dashboard</button>
+                            <button class="phone-tab" onclick="switchTab(this,'tab-emp')">Employees</button>
+                            <button class="phone-tab" onclick="switchTab(this,'tab-cal')">Calendar</button>
+                        </div>
+
+                        <!-- Dashboard Tab -->
+                        <div id="tab-dash" class="dash-screen active">
+                            <div class="dash-avatar">CR</div>
+                            <div class="dash-greeting">Good Afternoon</div>
+                            <div class="dash-name">Chaitanya Reddy...</div>
+                            <div class="dash-date">📅 Wed, Apr 22</div>
+
+                            <div class="metric-grid">
+                                <div class="metric-card mc-purple">
+                                    <div class="mc-icon">👤</div>
+                                    <div class="mc-val">11</div>
+                                    <div class="mc-lbl">Employees</div>
+                                    <div class="mc-trend trend-green">↑ +12%</div>
+                                </div>
+                                <div class="metric-card mc-green">
+                                    <div class="mc-icon">🙋</div>
+                                    <div class="mc-val">7</div>
+                                    <div class="mc-lbl">Present</div>
+                                    <div class="mc-trend trend-green">↑ +5%</div>
+                                </div>
+                                <div class="metric-card mc-peach">
+                                    <div class="mc-icon">🏖️</div>
+                                    <div class="mc-val">4</div>
+                                    <div class="mc-lbl">On Leave</div>
+                                    <div class="mc-trend trend-yellow">→ +2</div>
+                                </div>
+                                <div class="metric-card mc-pink">
+                                    <div class="mc-icon">🎯</div>
+                                    <div class="mc-val">9</div>
+                                    <div class="mc-lbl">Customers</div>
+                                    <div class="mc-trend trend-green">↑ +18%</div>
+                                </div>
+                            </div>
+
+                            <div class="att-section-title">📊 Today's Attendance</div>
+                            <div style="font-size:8px;color:#94a3b8;margin-bottom:8px;">First 3 employees</div>
+
+                            <div class="att-item">
+                                <div class="att-item-avatar" style="background:#10b981;">A</div>
+                                <div class="att-item-info">
+                                    <div class="att-item-name">Aditya Reddy</div>
+                                    <div class="att-item-date">• Apr 22, 2026</div>
+                                </div>
+                                <div class="att-badge badge-present">Present</div>
+                            </div>
+                            <div class="att-item">
+                                <div class="att-item-avatar" style="background:#10b981;">D</div>
+                                <div class="att-item-info">
+                                    <div class="att-item-name">Dipak</div>
+                                    <div class="att-item-date">• Apr 22, 2026</div>
+                                </div>
+                                <div class="att-badge badge-absent">Absent</div>
+                            </div>
+                            <div class="att-item">
+                                <div class="att-item-avatar" style="background:#10b981;">C</div>
+                                <div class="att-item-info">
+                                    <div class="att-item-name">Chaitanya</div>
+                                    <div class="att-item-date">• Apr 22, 2026</div>
+                                </div>
+                                <div class="att-badge badge-present">Present</div>
+                            </div>
+                        </div>
+
+                        <!-- Employee Tab -->
+                        <div id="tab-emp" class="dash-screen">
+                            <div style="font-size:14px;font-weight:700;color:#1e293b;margin-bottom:2px;">All Employees</div>
+                            <div style="font-size:9px;color:#94a3b8;margin-bottom:12px;">11 team members</div>
+
+                            <div class="emp-card">
+                                <div class="emp-top">
+                                    <div class="emp-avatar">AR</div>
+                                    <div class="emp-info">
+                                        <div class="emp-name">Aditya Reddy</div>
+                                        <div class="emp-role">Admin</div>
+                                    </div>
+                                    <div class="att-badge badge-present">Present</div>
+                                </div>
+                                <div class="emp-details">Mobile: 9865328936<br>Joining: 19 Nov 2025<br>Salary: ₹15,000 / Monthly</div>
+                                <div class="emp-btn">Manage Payment</div>
+                            </div>
+
+                            <div class="emp-card">
+                                <div class="emp-top">
+                                    <div class="emp-avatar">D</div>
+                                    <div class="emp-info">
+                                        <div class="emp-name">Dipak</div>
+                                        <div class="emp-role">Manager</div>
+                                    </div>
+                                    <div class="att-badge badge-absent">Absent</div>
+                                </div>
+                                <div class="emp-details">Mobile: 8585888888<br>Joining: 03 Dec 2025<br>Salary: ₹30,000 / Monthly</div>
+                                <div class="emp-btn">Manage Payment</div>
+                            </div>
+
+                            <div class="emp-card">
+                                <div class="emp-top">
+                                    <div class="emp-avatar">C</div>
+                                    <div class="emp-info">
+                                        <div class="emp-name">Chaitanya</div>
+                                        <div class="emp-role">Admin</div>
+                                    </div>
+                                    <div class="att-badge badge-present">Present</div>
+                                </div>
+                                <div class="emp-details">Mobile: 8976876458<br>Joining: 06 Dec 2025<br>Salary: ₹1,50,000 / Monthly</div>
+                                <div class="emp-btn">Manage Payment</div>
+                            </div>
+                        </div>
+
+                        <!-- Calendar Tab -->
+                        <div id="tab-cal" class="dash-screen">
+                            <div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:8px;text-align:center;">MindDreams Company</div>
+                            <div style="font-size:10px;color:#94a3b8;text-align:center;margin-bottom:12px;">Attendance Calendar</div>
+
+                            <div class="cal-summary" style="margin-bottom:12px;">
+                                <div class="cal-stat" style="background:#d1fae5;"><div class="cs-num">7</div><div class="cs-lbl">Present</div></div>
+                                <div class="cal-stat" style="background:#fce7f3;"><div class="cs-num">11</div><div class="cs-lbl">Absent</div></div>
+                                <div class="cal-stat" style="background:#f1f5f9;"><div class="cs-num">5</div><div class="cs-lbl">Weekly Off</div></div>
+                                <div class="cal-stat" style="background:#fef3c7;"><div class="cs-num">0</div><div class="cs-lbl">Holidays</div></div>
+                                <div class="cal-stat" style="background:#d1fae5;"><div class="cs-num">0</div><div class="cs-lbl">Paid Leave</div></div>
+                                <div class="cal-stat" style="background:#ede9fe;"><div class="cs-num">0</div><div class="cs-lbl">Half Day</div></div>
+                            </div>
+
+                            <div class="cal-header">
+                                <button class="cal-nav">‹</button>
+                                <div class="cal-month">April 2026</div>
+                                <button class="cal-nav">›</button>
+                            </div>
+
+                            <div class="cal-grid">
+                                <div class="cal-day-hdr">S</div><div class="cal-day-hdr">M</div><div class="cal-day-hdr">T</div><div class="cal-day-hdr">W</div><div class="cal-day-hdr">T</div><div class="cal-day-hdr">F</div><div class="cal-day-hdr">S</div>
+                                <div class="cal-day"></div><div class="cal-day"></div><div class="cal-day"></div><div class="cal-day">1<div class="dot dot-red"></div></div><div class="cal-day">2<div class="dot dot-gray"></div></div><div class="cal-day">3<div class="dot dot-green"></div></div><div class="cal-day">4<div class="dot dot-red"></div></div>
+                                <div class="cal-day">5<div class="dot dot-green"></div></div><div class="cal-day">6<div class="dot dot-red"></div></div><div class="cal-day">7<div class="dot dot-green"></div></div><div class="cal-day">8<div class="dot dot-red"></div></div><div class="cal-day">9<div class="dot dot-gray"></div></div><div class="cal-day">10<div class="dot dot-green"></div></div><div class="cal-day">11<div class="dot dot-red"></div></div>
+                                <div class="cal-day">12<div class="dot dot-red"></div></div><div class="cal-day">13<div class="dot dot-green"></div></div><div class="cal-day">14<div class="dot dot-red"></div></div><div class="cal-day">15<div class="dot dot-green"></div></div><div class="cal-day">16<div class="dot dot-gray"></div></div><div class="cal-day">17<div class="dot dot-red"></div></div><div class="cal-day">18<div class="dot dot-red"></div></div>
+                                <div class="cal-day">19<div class="dot dot-green"></div></div><div class="cal-day">20<div class="dot dot-red"></div></div><div class="cal-day">21<div class="dot dot-red"></div></div><div class="cal-day cal-selected">22<div class="dot dot-green"></div></div><div class="cal-day">23<div class="dot dot-gray"></div></div><div class="cal-day">24</div><div class="cal-day">25</div>
+                                <div class="cal-day">26<div class="dot dot-red"></div></div><div class="cal-day">27<div class="dot dot-red"></div></div><div class="cal-day">28<div class="dot dot-red"></div></div><div class="cal-day">29</div><div class="cal-day">30<div class="dot dot-gray"></div></div><div class="cal-day"></div><div class="cal-day"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PROCESS -->
+    <section id="process">
+        <div class="section-header reveal">
+            <div class="section-tag">How We Work</div>
+            <h2 class="section-title">Our Process</h2>
+            <p class="section-sub">From idea to deployment — a streamlined development process.</p>
+        </div>
+        <div class="process-grid">
+            <div class="process-step reveal">
+                <div class="process-num">1</div>
+                <h3>Discover</h3>
+                <p>Understand your business needs, goals, and target audience through deep research.</p>
+            </div>
+            <div class="process-step reveal">
+                <div class="process-num">2</div>
+                <h3>Design</h3>
+                <p>Create intuitive UI/UX designs and architecture blueprints tailored to your requirements.</p>
+            </div>
+            <div class="process-step reveal">
+                <div class="process-num">3</div>
+                <h3>Develop</h3>
+                <p>Build with modern tech stacks, clean code, and agile methodology with regular updates.</p>
+            </div>
+            <div class="process-step reveal">
+                <div class="process-num">4</div>
+                <h3>Deploy</h3>
+                <p>Launch on cloud infrastructure with monitoring, security, and ongoing support.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- TECH -->
+    <section id="tech">
+        <div class="section-header reveal">
+            <div class="section-tag">Technology</div>
+            <h2 class="section-title">Tech Stack</h2>
+            <p class="section-sub">Modern technologies that power our solutions.</p>
+        </div>
+        <div class="tech-grid reveal">
+            <div class="tech-tag">React Native</div>
+            <div class="tech-tag">Node.js</div>
+            <div class="tech-tag">Express.js</div>
+            <div class="tech-tag">MySQL</div>
+            <div class="tech-tag">Firebase</div>
+            <div class="tech-tag">AWS</div>
+            <div class="tech-tag">React.js</div>
+            <div class="tech-tag">Next.js</div>
+            <div class="tech-tag">TypeScript</div>
+            <div class="tech-tag">Razorpay</div>
+            <div class="tech-tag">Redis</div>
+            <div class="tech-tag">Docker</div>
+            <div class="tech-tag">PM2</div>
+            <div class="tech-tag">Nginx</div>
+            <div class="tech-tag">Figma</div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta-section" id="contact">
+        <div class="reveal">
+            <div class="section-tag">Get Started</div>
+            <h2>Ready to Build Something Great?</h2>
+            <p>Let's discuss your project and turn your idea into a powerful product.</p>
+            <form action="https://api.web3forms.com/submit" method="POST" id="contactForm" style="max-width:500px; margin:0 auto; text-align:left;">
+                            <input type="hidden" name="access_key" value="b2a1ead2-a707-40aa-b3db-465f581be012" />
+                <div class="form-row">
+                    <input type="text" name="name" placeholder="Your Name" required class="form-input" />
+                    <input type="tel" name="phone" placeholder="Phone Number" required class="form-input" />
+                </div>
+                <input type="email" name="email" placeholder="Your Email" required class="form-input" style="margin-top:12px;" />
+                <textarea name="message" placeholder="Tell us about your project..." rows="4" required class="form-input" style="margin-top:12px; resize:vertical; min-height:100px;"></textarea>
+                <button type="submit" class="btn-primary" style="width:100%; margin-top:16px; padding:16px; border-radius:50px;">
+                    Send Message
+                </button>
+                <div id="formStatus" style="text-align:center; margin-top:12px; font-size:14px;"></div>
+            </form>
+        </div>
+    </section>
+
+    <style>
+        .form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+        .form-input {
+            width:100%; border:1px solid rgba(255,255,255,.15); background:rgba(255,255,255,.05);
+            color:white; padding:14px 18px; font-size:14px; outline:none; font-family:inherit;
+            border-radius:12px; transition:.2s;
+        }
+        .form-input:focus { border-color:var(--primary); background:rgba(255,255,255,.08); }
+        .form-input::placeholder { color:rgba(255,255,255,.4); }
+        @media (max-width:500px) { .form-row { grid-template-columns:1fr; } }
+    </style>
+
+    <!-- FOOTER -->
+    <footer>
+        <div class="footer-logo">MindDreams</div>
+        <p class="footer-desc">Building software that powers businesses. We create innovative solutions that simplify operations and drive growth.</p>
+        <div class="footer-links">
+            <a href="#services">Services</a>
+            <a href="#product">Product</a>
+            <a href="#process">Process</a>
+            <a href="#tech">Technology</a>
+            <a href="#contact">Contact</a>
+        </div>
+        <div class="footer-divider"></div>
+        <div class="footer-copy">&copy; 2026 MindDreams. All rights reserved.</div>
+    </footer>
+
+    <script>
+        // Navbar scroll effect
+        window.addEventListener('scroll', () => {
+            document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 50);
+        });
+
+        // Phone tab switcher
+        function switchTab(btn, tabId) {
+            document.querySelectorAll('.phone-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.dash-screen').forEach(s => s.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+        }
+
+        // Scroll reveal
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+        }, { threshold: 0.15 });
+        document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+        // Contact form AJAX submit
+        const form = document.getElementById('contactForm');
+        const status = document.getElementById('formStatus');
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const btn = form.querySelector('button[type=submit]');
+            btn.disabled = true;
+            btn.textContent = 'Sending...';
+            fetch(form.action, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: { 'Accept': 'application/json' }
+            }).then(res => {
+                if (res.ok) {
+                    status.style.color = '#10b981';
+                    status.textContent = 'Thank you! We will contact you soon.';
+                    form.reset();
+                } else {
+                    status.style.color = '#ef4444';
+                    status.textContent = 'Something went wrong. Please try again.';
+                }
+            }).catch(() => {
+                status.style.color = '#ef4444';
+                status.textContent = 'Network error. Please try again.';
+            }).finally(() => {
+                btn.disabled = false;
+                btn.textContent = 'Send Message';
+            });
+        });
+    </script>
+
+</body>
+</html>
