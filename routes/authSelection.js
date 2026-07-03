@@ -4,6 +4,7 @@ const db = require('../config/db');
 const jwt = require('jsonwebtoken');
 const Customer = require('../models/Customer');
 const NotificationService = require('../services/notificationService');
+const MessageCentralService = require('../services/messageCentralService');
 
 // Login with user type selection (for users existing in multiple tables)
 router.post('/login-with-type', async (req, res) => {
@@ -523,7 +524,7 @@ router.post('/check-owner', async (req, res) => {
   }
 });
 
-// Send OTP to mobile number
+// Send OTP to mobile number via Message Central
 router.post('/send-otp', async (req, res) => {
   try {
     const { mobileNumber } = req.body;
@@ -535,26 +536,31 @@ router.post('/send-otp', async (req, res) => {
       });
     }
     
-    // Generate a 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    // Send OTP via Message Central
+    const mcResponse = await MessageCentralService.sendOTP(mobileNumber, 6);
     
-    // In production, you would send this OTP via SMS
-    console.log(`OTP for ${mobileNumber}: ${otp}`);
+    if (!mcResponse.success) {
+      return res.status(400).json({
+        success: false,
+        message: mcResponse.message || 'Failed to send OTP'
+      });
+    }
     
-    // Save OTP to database with expiry
+    // Save to otp_verifications for audit logging
     const expiresAt = new Date();
-    expiresAt.setMinutes(expiresAt.getMinutes() + 10); // 10 minutes expiry
+    expiresAt.setMinutes(expiresAt.getMinutes() + 10);
     
     await db.execute(
       'INSERT INTO otp_verifications (mobile_number, otp, expires_at) VALUES (?, ?, ?)',
-      [mobileNumber, otp, expiresAt]
+      [mobileNumber, mcResponse.verificationId, expiresAt]
     );
+
+    console.log(`OTP sent via Message Central to ${mobileNumber}, verificationId: ${mcResponse.verificationId}`);
 
     res.json({ 
       success: true, 
       message: 'OTP sent successfully',
-      // In production, don't send OTP in response
-      otp: process.env.NODE_ENV === 'development' ? otp : undefined
+      verificationId: mcResponse.verificationId
     });
   } catch (error) {
     console.error('Error sending OTP:', error);
@@ -566,10 +572,10 @@ router.post('/send-otp', async (req, res) => {
   }
 });
 
-// Verify OTP
+// Verify OTP via Message Central
 router.post('/verify-otp', async (req, res) => {
   try {
-    const { mobileNumber, otp } = req.body;
+    const { mobileNumber, otp, verificationId } = req.body;
     
     if (!mobileNumber || !otp) {
       return res.status(400).json({
@@ -577,25 +583,29 @@ router.post('/verify-otp', async (req, res) => {
         message: 'Mobile number and OTP are required'
       });
     }
-    
-    // Check if OTP is valid and not expired
-    const [otpRecords] = await db.execute(
-      'SELECT * FROM otp_verifications WHERE mobile_number = ? AND otp = ? AND is_used = 0 AND expires_at > NOW() ORDER BY created_at DESC LIMIT 1',
-      [mobileNumber, otp]
-    );
 
-    if (otpRecords.length === 0) {
+    if (!verificationId) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid or expired OTP'
+        message: 'Verification ID is required'
+      });
+    }
+    
+    // Validate OTP via Message Central
+    const mcResponse = await MessageCentralService.validateOTP(verificationId, otp);
+
+    if (!mcResponse.success) {
+      return res.status(400).json({
+        success: false,
+        message: mcResponse.message || 'Invalid or expired OTP'
       });
     }
 
-    // Mark OTP as used
+    // Mark the audit log record as used
     await db.execute(
-      'UPDATE otp_verifications SET is_used = 1 WHERE id = ?',
-      [otpRecords[0].id]
-    );
+      'UPDATE otp_verifications SET is_used = 1 WHERE mobile_number = ? AND otp = ? AND is_used = 0 ORDER BY created_at DESC LIMIT 1',
+      [mobileNumber, verificationId]
+    ).catch(() => { /* audit log update is best-effort */ });
 
     // Check if user already exists and return token
     const [existingUsers] = await db.execute(
