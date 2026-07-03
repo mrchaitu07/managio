@@ -62,37 +62,70 @@ router.post('/create-subscription', async (req, res) => {
       console.log('Auto-created Razorpay plan:', resolvedPlanId);
     }
 
-    // Create subscription with 30-day free trial
-    // start_at delays first charge by 30 days. Razorpay only takes ₹5 auth hold (auto-refunded)
-    const startAt = Math.floor(Date.now() / 1000) + (TRIAL_DAYS * 24 * 60 * 60) + 60;
+    // Check if user has already used a trial
+    let hasUsedTrial = false;
+    if (user_id) {
+      const [rows] = await db.execute('SELECT trial_start_date FROM users WHERE id = ?', [user_id]);
+      if (rows.length > 0 && rows[0].trial_start_date) {
+        hasUsedTrial = true;
+      }
+    }
 
-    const subscription = await razorpay.subscriptions.create({
+    // Build subscription parameters
+    const subscriptionParams = {
       plan_id: resolvedPlanId,
       customer_notify: 1,
       total_count: total_count,
-      start_at: startAt,
-    });
+    };
 
-    console.log('Subscription created:', subscription.id, 'status:', subscription.status, 'start_at:', new Date(startAt * 1000).toISOString());
+    let startAt = null;
+    // Only delay the charge if they haven't used their trial
+    if (!hasUsedTrial) {
+      startAt = Math.floor(Date.now() / 1000) + (TRIAL_DAYS * 24 * 60 * 60) + 60;
+      subscriptionParams.start_at = startAt;
+      console.log('User is eligible for trial. Delaying first charge to:', new Date(startAt * 1000).toISOString());
+    } else {
+      console.log('User has already used a trial. Charging immediately.');
+    }
+
+    const subscription = await razorpay.subscriptions.create(subscriptionParams);
+
+    console.log('Subscription created:', subscription.id, 'status:', subscription.status, 'start_at:', startAt ? new Date(startAt * 1000).toISOString() : 'immediate');
 
     // If user_id provided, link subscription + trial in DB
     if (user_id) {
       const now = new Date();
-      const trialEnd = new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
-      await db.execute(
-        `UPDATE users
-         SET subscription_status = 'trial',
-             razorpay_subscription_id = ?,
-             razorpay_plan_id = ?,
-             trial_start_date = ?,
-             trial_end_date = ?,
-             subscription_start_date = ?,
-             subscription_end_date = ?,
-             last_payment_status = 'trial_started'
-         WHERE id = ?`,
-        [subscription.id, resolvedPlanId, now, trialEnd, now, trialEnd, user_id]
-      );
-      console.log('Subscription linked to user:', user_id);
+      
+      if (!hasUsedTrial) {
+        // User gets a trial
+        const trialEnd = new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
+        await db.execute(
+          `UPDATE users
+           SET subscription_status = 'trial',
+               razorpay_subscription_id = ?,
+               razorpay_plan_id = ?,
+               trial_start_date = ?,
+               trial_end_date = ?,
+               subscription_start_date = ?,
+               subscription_end_date = ?,
+               last_payment_status = 'trial_started'
+           WHERE id = ?`,
+          [subscription.id, resolvedPlanId, now, trialEnd, now, trialEnd, user_id]
+        );
+        console.log('Trial subscription linked to user:', user_id);
+      } else {
+        // User already used trial, they are directly subscribing
+        // Status remains 'expired' or 'pending' until verify-payment activates it
+        await db.execute(
+          `UPDATE users
+           SET razorpay_subscription_id = ?,
+               razorpay_plan_id = ?,
+               last_payment_status = 'pending_payment'
+           WHERE id = ?`,
+          [subscription.id, resolvedPlanId, user_id]
+        );
+        console.log('Paid subscription initialized for user (pending verification):', user_id);
+      }
     }
 
     res.json({
